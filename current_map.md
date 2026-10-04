@@ -30,6 +30,8 @@ The added doorway is between Rooms 11 and 12 in the new numbering; it occupies t
 - East door from Room 14 connects to Building B west door, Room 13.
 - South door from Room 17 connects to Building D north door, Room 04.
 
+Objects: a small wireframe box is in Room 06; a larger wireframe box is in Room 14.
+
 ## Building B (24 rooms; 6 columns by 4 rows)
 
 Room numbers run left to right, then top to bottom.
