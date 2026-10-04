@@ -4,25 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Room Lines</title>
-<style>
-  :root { color-scheme: dark; --ink:#d8f2ed; --dim:#70a9a0; --glow:#72ffd0; }
-  * { box-sizing:border-box }
-  html,body { margin:0; width:100%; height:100%; overflow:hidden; background:#07100f; color:var(--ink); font:14px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace }
-  canvas { display:block; width:100%; height:100%; }
-  #hud { position:fixed; inset:18px 20px auto; display:flex; justify-content:space-between; align-items:flex-start; pointer-events:none; text-shadow:0 2px 8px #000; }
-  .card { border:1px solid #70a9a066; background:#07100fb8; padding:10px 13px; letter-spacing:.08em; text-transform:uppercase; }
-  #room { color:var(--glow); font-size:18px }
-  #help { position:fixed; left:50%; bottom:18px; transform:translateX(-50%); white-space:nowrap; color:#b8d3ce; background:#07100fba; border:1px solid #70a9a044; padding:8px 12px; pointer-events:none; }
-  #intro { position:fixed; inset:0; display:grid; place-items:center; background:#06100ed9; text-align:center; transition:opacity .35s; }
-  #intro.hidden { opacity:0; pointer-events:none }
-  #intro section { max-width:530px; padding:30px; border:1px solid #72ffd066; background:#091614; box-shadow:0 0 70px #72ffd012; }
-  h1 { margin:0 0 10px; font-weight:500; letter-spacing:.24em; color:var(--glow); font-size:clamp(26px,5vw,42px) }
-  p { color:#aac6bf; margin:8px 0 20px }
-  button { cursor:pointer; color:#07100f; background:var(--glow); border:0; padding:12px 22px; font:inherit; font-weight:bold; letter-spacing:.1em; }
-  #crosshair { position:fixed; left:50%; top:50%; width:12px; height:12px; transform:translate(-50%,-50%); pointer-events:none; opacity:.55 }
-  #crosshair:before,#crosshair:after { content:""; position:absolute; background:#d8f2ed }
-  #crosshair:before { left:5px; top:0; width:1px; height:12px } #crosshair:after { top:5px; left:0; width:12px; height:1px }
-</style>
+<link rel="stylesheet" href="styles.css">
 </head>
 <body>
 <canvas id="view" aria-label="Wireframe first person room exploration game"></canvas>
@@ -30,121 +12,6 @@
 <div id="crosshair"></div>
 <div id="help">WASD move · mouse look · arrows turn · click to capture mouse</div>
 <div id="intro"><section><h1>ROOM LINES</h1><p>Explore four wireframe buildings in a ring. Building A has 19 rooms; Buildings B, C, and D have 24 rooms each. Room 1 in A is widened across the former first two room positions. Two exterior doors on each building connect to its neighbors with paths 10 room lengths long.</p><p>Move with <b>W A S D</b> or the arrow keys. Turn with your mouse.</p><button id="start">ENTER THE WORLD</button></section></div>
-<script>
-(() => {
-  const canvas=document.querySelector('#view'), ctx=canvas.getContext('2d');
-  const roomLabel=document.querySelector('#room'), roomCount=document.querySelector('#room-count');
-  const buildingLabel=document.querySelector('#building'), outsideLabel=document.querySelector('#outside'), help=document.querySelector('#help');
-  const SIZE=7, PAD=12, ROOM_LENGTHS=10, ROOM_FT=10, CELL_FT=ROOM_FT/SIZE;
-  const A={name:'A',cols:5,rows:4,x:PAD+SIZE,y:PAD};
-  A.w=A.cols*SIZE; A.h=A.rows*SIZE;
-  const PATH_GAP=ROOM_LENGTHS*SIZE;
-  const B={name:'B',cols:6,rows:4,x:A.x+A.w+PATH_GAP,y:PAD};
-  B.w=B.cols*SIZE; B.h=B.rows*SIZE;
-  const C={name:'C',cols:6,rows:4,x:B.x,y:B.y+B.h+PATH_GAP};
-  C.w=C.cols*SIZE; C.h=C.rows*SIZE;
-  const D={name:'D',cols:6,rows:4,x:C.x-C.w-PATH_GAP,y:C.y};
-  D.w=D.cols*SIZE; D.h=D.rows*SIZE;
-  const buildings=[A,B,C,D];
-  const W=Math.max(...buildings.map(b=>b.x+b.w))+PAD, H=Math.max(...buildings.map(b=>b.y+b.h))+PAD;
-  const map=Array.from({length:H},()=>Array(W).fill(0));
-  const doors=new Map(), allRooms=[];
-  let nextDoorId=0;
-  const key=(x,y)=>`${x},${y}`;
-  function openDoorCell(x,y,id){map[y][x]=0;doors.set(key(x,y),id);}
-  function addBuilding(b, exterior) {
-    for(let y=b.y;y<b.y+b.h;y++) for(let x=b.x;x<b.x+b.w;x++) map[y][x]=1;
-    for(let ry=0;ry<b.rows;ry++) for(let rx=0;rx<b.cols;rx++) {
-      const id=ry*b.cols+rx, ox=b.x+rx*SIZE, oy=b.y+ry*SIZE;
-      allRooms.push({building:b.name,id,ox,oy});
-      for(let y=oy+1;y<oy+SIZE-1;y++) for(let x=ox+1;x<ox+SIZE-1;x++) map[y][x]=0;
-      const mergeFirstPair=b.name==='A'&&ry===0&&rx===0;
-      const addDoor12to13=b.name==='A'&&ry===2&&rx===1;
-      if(rx<b.cols-1&&!mergeFirstPair&&(((id*7+3)%5!==0)||addDoor12to13)) {const x=ox+SIZE-1,y=oy+2+(id*3)%3,doorId=nextDoorId++;openDoorCell(x,y,doorId);map[y][x+1]=0;}
-      if(ry<b.rows-1 && ((id*11+1)%4!==0)) {const x=ox+2+(id*2)%3,y=oy+SIZE-1,doorId=nextDoorId++;openDoorCell(x,y,doorId);map[y+1][x]=0;}
-    }
-    if(b.name==='A'){const x=b.x+SIZE-1;for(let y=b.y+1;y<b.y+SIZE-1;y++){map[y][x]=0;map[y][x+1]=0;}}
-    for(const [side,position] of exterior){let x,y;if(side==='north'||side==='south'){x=position;y=side==='north'?b.y:b.y+b.h-1;}else{x=side==='west'?b.x:b.x+b.w-1;y=position;}openDoorCell(x,y,nextDoorId++);}
-  }
-  const rowAB=A.y+17, colBC=B.x+17, rowCD=C.y+17, colDA=A.x+17;
-  addBuilding(A,[['east',rowAB],['south',colDA]]);
-  addBuilding(B,[['west',rowAB],['south',colBC]]);
-  addBuilding(C,[['north',colBC],['west',rowCD]]);
-  addBuilding(D,[['east',rowCD],['north',D.x+24]]);
-  const paths=[
-    {axis:'x',from:A.x+A.w,to:B.x,fixed:rowAB+.5},
-    {axis:'y',from:B.y+B.h,to:C.y,fixed:colBC+.5},
-    {axis:'x',from:D.x+D.w,to:C.x,fixed:rowCD+.5},
-    {axis:'y',from:A.y+A.h,to:D.y,fixed:colDA+.5}
-  ];
-  const isWall=(x,y)=>x<0||y<0||x>=W||y>=H ? true : map[y][x]===1;
-  const player={x:A.x+3.5,y:A.y+3.5,a:0};
-  const PATH_HALF_WIDTH=.5, WALL_HEIGHT=1, DOOR_HEIGHT=.8;
-  const boxes=[
-    {x:A.x+1.5*SIZE,y:A.y+1.5*SIZE,w:.9,d:.9,h:.55},
-    {x:A.x+4.5*SIZE,y:A.y+2.5*SIZE,w:1.8,d:1.8,h:.9}
-  ];
-  let width=0,height=0,dpr=1,last=0,rays=600;
-  const FOV=Math.PI/3;
-  function resize(){dpr=Math.min(devicePixelRatio||1,2);width=innerWidth;height=innerHeight;rays=Math.min(900,Math.max(360,Math.floor(width*.72)));canvas.width=Math.floor(width*dpr);canvas.height=Math.floor(height*dpr);ctx.setTransform(dpr,0,0,dpr,0,0)}
-  addEventListener('resize',resize);resize();
-  const keysDown=new Set();
-  addEventListener('keydown',e=>{if(['w','a','s','d','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)){e.preventDefault();keysDown.add(e.key.toLowerCase())}});
-  addEventListener('keyup',e=>keysDown.delete(e.key.toLowerCase()));
-  document.querySelector('#start').onclick=()=>{document.querySelector('#intro').classList.add('hidden');canvas.requestPointerLock?.()};
-  canvas.addEventListener('click',()=>canvas.requestPointerLock?.());
-  document.addEventListener('mousemove',e=>{if(document.pointerLockElement===canvas)player.a+=e.movementX*.0025});
-  addEventListener('keydown',e=>{if(e.key==='Escape'&&document.pointerLockElement)document.exitPointerLock()});
-  function update(dt){
-    const turn=(keysDown.has('arrowright')?1:0)-(keysDown.has('arrowleft')?1:0);player.a+=turn*dt*2.1;
-    let forward=(keysDown.has('w')||keysDown.has('arrowup')?1:0)-(keysDown.has('s')||keysDown.has('arrowdown')?1:0);
-    let side=(keysDown.has('d')?1:0)-(keysDown.has('a')?1:0),mag=Math.hypot(forward,side)||1;forward/=mag;side/=mag;
-    const speed=dt*(4.43/CELL_FT),dx=(Math.cos(player.a)*forward-Math.sin(player.a)*side)*speed,dy=(Math.sin(player.a)*forward+Math.cos(player.a)*side)*speed,r=.19;
-    if(!isWall(Math.floor(player.x+dx+Math.sign(dx)*r),Math.floor(player.y)))player.x+=dx;
-    if(!isWall(Math.floor(player.x),Math.floor(player.y+dy+Math.sign(dy)*r)))player.y+=dy;
-    const b=buildings.find(b=>player.x>=b.x&&player.x<b.x+b.w&&player.y>=b.y&&player.y<b.y+b.h)||null;
-    if(b){const rx=Math.floor((player.x-b.x)/SIZE),ry=Math.floor((player.y-b.y)/SIZE),cellNo=ry*b.cols+rx+1;buildingLabel.textContent=b.name;const roomNo=b===A?(ry===0?(rx<2?1:rx):cellNo-1):cellNo;roomLabel.textContent=String(roomNo).padStart(2,'0');roomCount.textContent=String(b===A?b.cols*b.rows-1:b.cols*b.rows);outsideLabel.textContent='INSIDE';help.textContent='WASD move · mouse look · arrows turn · click to capture mouse';}
-    else {buildingLabel.textContent='—';roomLabel.textContent='OUT';roomCount.textContent='—';outsideLabel.textContent='OUTSIDE · OPEN GROUNDS';help.textContent='OUTSIDE · follow the paths around the building ring';}
-  }
-  function draw(){
-    const horizon=height*.5,focal=width/(2*Math.tan(FOV/2));
-    ctx.fillStyle='#081412';ctx.fillRect(0,0,width,height);
-    const sky=ctx.createLinearGradient(0,0,0,horizon);sky.addColorStop(0,'#07100f');sky.addColorStop(1,'#122422');ctx.fillStyle=sky;ctx.fillRect(0,0,width,horizon);
-    ctx.fillStyle='#101d1a';ctx.fillRect(0,horizon,width,height-horizon);
-    const step=Math.max(2,Math.ceil(width/rays)),hits=[],visibleDoors=new Map();
-    // Draw the horizontal guides first so nearer wall strokes cover them.
-    ctx.lineWidth=1;ctx.strokeStyle='rgba(112,169,160,.18)';
-    for(let i=1;i<=12;i++){const y=horizon+(height-horizon)*(i/13)**2,cy=horizon-horizon*(i/13)**2;ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(width,y);ctx.moveTo(0,cy);ctx.lineTo(width,cy);ctx.stroke();}
-    for(let sx=0;sx<width;sx+=step){
-      const rayA=player.a-FOV/2+(sx/width)*FOV,rx=Math.cos(rayA),ry=Math.sin(rayA);
-      let mx=Math.floor(player.x),my=Math.floor(player.y),deltaX=Math.abs(1/rx),deltaY=Math.abs(1/ry),stepX=rx<0?-1:1,stepY=ry<0?-1:1;
-      let sideX=(rx<0?player.x-mx:mx+1-player.x)*deltaX,sideY=(ry<0?player.y-my:my+1-player.y)*deltaY,side=0,dist=0,hitX=0,hitY=0,wallHit=false,doorPanel=false,rayDoors=[];
-      for(let i=0;i<W+H;i++){
-        if(sideX<sideY){dist=sideX;sideX+=deltaX;mx+=stepX;side=0}else{dist=sideY;sideY+=deltaY;my+=stepY;side=1}
-        if(mx<0||my<0||mx>=W||my>=H)break;
-        const doorId=doors.get(key(mx,my));if(doorId!==undefined){rayDoors.push({id:doorId,dist});if(dist>1.15){hitX=mx;hitY=my;wallHit=true;doorPanel=true;break;}}
-        if(map[my][mx]===1){hitX=mx;hitY=my;wallHit=true;break;}
-      }
-      dist=Math.max(.08,dist*Math.cos(rayA-player.a));
-      for(const door of rayDoors){const d=door.dist*Math.cos(rayA-player.a);let v=visibleDoors.get(door.id);if(!v)visibleDoors.set(door.id,v={left:sx,right:sx+step,leftDepth:d,rightDepth:d});else{if(sx<v.left){v.left=sx;v.leftDepth=d;}if(sx+step>v.right){v.right=sx+step;v.rightDepth=d;}}}
-      hits.push({sx,dist,hitX,hitY,side,wallHit});if(!wallHit)continue;
-      const wallH=Math.min(height*1.8,focal*WALL_HEIGHT/dist),top=horizon-wallH/2,bottom=horizon+wallH/2;
-      const alpha=Math.max(.13,.72-dist*.0012-(side?.16:0));ctx.strokeStyle=`rgba(126,220,199,${alpha})`;ctx.lineWidth=1;
-      if(doorPanel){const panelH=Math.min(wallH,focal*DOOR_HEIGHT/dist),panelTop=bottom-panelH;ctx.fillStyle='#102421';ctx.fillRect(sx,panelTop,step+1,panelH);ctx.strokeStyle=`rgba(114,255,208,${Math.max(.35,alpha)})`;ctx.beginPath();ctx.moveTo(sx,panelTop);ctx.lineTo(sx,bottom);ctx.stroke();}
-      else{ctx.fillStyle=side?'#0b1916':'#0e1c19';ctx.fillRect(sx,top,step+1,wallH);ctx.beginPath();ctx.moveTo(sx,top);ctx.lineTo(sx,bottom);ctx.stroke();}
-    }
-    // Project the two path edges onto the ground and hide them behind nearer walls.
-    function projectPathPoint(x,y){const dx=x-player.x,dy=y-player.y,depth=dx*Math.cos(player.a)+dy*Math.sin(player.a),lateral=-dx*Math.sin(player.a)+dy*Math.cos(player.a);if(depth<.25)return null;const sx=width/2+focal*lateral/depth,sy=horizon+focal*(WALL_HEIGHT/2)/depth;const ray=hits[Math.min(hits.length-1,Math.max(0,Math.floor(sx/step)))];if(ray&&ray.wallHit&&depth>ray.dist+.5)return null;return {sx,sy};}
-    ctx.strokeStyle='rgba(114,255,208,.58)';ctx.lineWidth=1.4;
-    for(const path of paths)for(const offset of [-PATH_HALF_WIDTH,PATH_HALF_WIDTH]){const low=Math.min(path.from,path.to),high=Math.max(path.from,path.to),samples=[];for(let v=low;v<high;v+=4)samples.push(v);samples.push(high);ctx.beginPath();let active=false,lastPoint=null;for(const v of samples){const x=path.axis==='x'?v:path.fixed+offset,y=path.axis==='x'?path.fixed+offset:v,p=projectPathPoint(x,y);if(!p||p.sx< -10||p.sx>width+10){if(active)ctx.stroke();active=false;lastPoint=null;continue;}if(!active){ctx.moveTo(p.sx,p.sy);active=true;}else if(Math.abs(p.sx-lastPoint.sx)<width*.7){ctx.lineTo(p.sx,p.sy);}else{ctx.stroke();ctx.beginPath();ctx.moveTo(p.sx,p.sy);active=true;}lastPoint=p;}if(active)ctx.stroke();}
-    // Draw the room props as bright wireframe cuboids, using the door-outline stroke.
-    function projectBoxPoint(x,y,z){const dx=x-player.x,dy=y-player.y,depth=dx*Math.cos(player.a)+dy*Math.sin(player.a),lateral=-dx*Math.sin(player.a)+dy*Math.cos(player.a);if(depth<.25)return null;const sx=width/2+focal*lateral/depth,sy=horizon+focal*(WALL_HEIGHT/2-z)/depth,ray=hits[Math.min(hits.length-1,Math.max(0,Math.floor(sx/step)))];return {sx,sy,visible:!ray||!ray.wallHit||depth<=ray.dist+.5};}
-    ctx.strokeStyle='rgba(114,255,208,.72)';ctx.lineWidth=1.5;
-    for(const box of boxes){const corners=[];for(const z of [0,box.h])for(const sy of [-1,1])for(const sx of [-1,1])corners.push({x:box.x+sx*box.w/2,y:box.y+sy*box.d/2,z});const edges=[[0,1],[0,2],[1,3],[2,3],[4,5],[4,6],[5,7],[6,7],[0,4],[1,5],[2,6],[3,7]];for(const [a,b] of edges){ctx.beginPath();let pen=false;for(let i=0;i<=10;i++){const t=i/10,p=projectBoxPoint(corners[a].x+(corners[b].x-corners[a].x)*t,corners[a].y+(corners[b].y-corners[a].y)*t,corners[a].z+(corners[b].z-corners[a].z)*t);if(!p||!p.visible||p.sx< -10||p.sx>width+10){pen=false;continue;}if(!pen){ctx.moveTo(p.sx,p.sy);pen=true;}else ctx.lineTo(p.sx,p.sy);}ctx.stroke();}}
-    for(const d of visibleDoors.values()){const leftBottom=horizon+focal*WALL_HEIGHT/(2*d.leftDepth),rightBottom=horizon+focal*WALL_HEIGHT/(2*d.rightDepth),leftTop=leftBottom-focal*DOOR_HEIGHT/d.leftDepth,rightTop=rightBottom-focal*DOOR_HEIGHT/d.rightDepth;ctx.beginPath();ctx.moveTo(d.left,leftTop);ctx.lineTo(d.right,rightTop);ctx.lineTo(d.right,rightBottom);ctx.lineTo(d.left,leftBottom);ctx.closePath();ctx.stroke();}
-  }
-  function frame(t){const dt=Math.min(.05,(t-last)/1000||0);last=t;update(dt);draw();requestAnimationFrame(frame);}requestAnimationFrame(frame);
-})();
-</script>
+<script type="module" src="./src/main.js"></script>
 </body>
 </html>
