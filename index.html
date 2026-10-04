@@ -118,20 +118,20 @@
     for(let sx=0;sx<width;sx+=step){
       const rayA=player.a-FOV/2+(sx/width)*FOV,rx=Math.cos(rayA),ry=Math.sin(rayA);
       let mx=Math.floor(player.x),my=Math.floor(player.y),deltaX=Math.abs(1/rx),deltaY=Math.abs(1/ry),stepX=rx<0?-1:1,stepY=ry<0?-1:1;
-      let sideX=(rx<0?player.x-mx:mx+1-player.x)*deltaX,sideY=(ry<0?player.y-my:my+1-player.y)*deltaY,side=0,dist=0,hitX=0,hitY=0,wallHit=false,doorPanel=false,doorKey=null,doorDist=Infinity;
+      let sideX=(rx<0?player.x-mx:mx+1-player.x)*deltaX,sideY=(ry<0?player.y-my:my+1-player.y)*deltaY,side=0,dist=0,hitX=0,hitY=0,wallHit=false,doorPanel=false,rayDoors=[];
       for(let i=0;i<W+H;i++){
         if(sideX<sideY){dist=sideX;sideX+=deltaX;mx+=stepX;side=0}else{dist=sideY;sideY+=deltaY;my+=stepY;side=1}
         if(mx<0||my<0||mx>=W||my>=H)break;
-        const doorId=doors.get(key(mx,my));if(doorId!==undefined&&doorKey===null){doorKey=doorId;doorDist=dist;if(dist>1.15){hitX=mx;hitY=my;wallHit=true;doorPanel=true;break;}}
+        const doorId=doors.get(key(mx,my));if(doorId!==undefined){rayDoors.push({id:doorId,dist});if(dist>1.15){hitX=mx;hitY=my;wallHit=true;doorPanel=true;break;}}
         if(map[my][mx]===1){hitX=mx;hitY=my;wallHit=true;break;}
       }
       dist=Math.max(.08,dist*Math.cos(rayA-player.a));
-      if(doorKey!==null&&(doorDist<dist||doorPanel)){const d=doorDist*Math.cos(rayA-player.a);let v=visibleDoors.get(doorKey);if(!v)visibleDoors.set(doorKey,v={left:sx,right:sx+step,leftDepth:d,rightDepth:d});else{if(sx<v.left){v.left=sx;v.leftDepth=d;}if(sx+step>v.right){v.right=sx+step;v.rightDepth=d;}}}
+      for(const door of rayDoors){const d=door.dist*Math.cos(rayA-player.a);let v=visibleDoors.get(door.id);if(!v)visibleDoors.set(door.id,v={left:sx,right:sx+step,leftDepth:d,rightDepth:d});else{if(sx<v.left){v.left=sx;v.leftDepth=d;}if(sx+step>v.right){v.right=sx+step;v.rightDepth=d;}}}
       hits.push({sx,dist,hitX,hitY,side,wallHit});if(!wallHit)continue;
       const wallH=Math.min(height*1.8,focal*WALL_HEIGHT/dist),top=horizon-wallH/2,bottom=horizon+wallH/2;
       const alpha=Math.max(.13,.72-dist*.0012-(side?.16:0));ctx.strokeStyle=`rgba(126,220,199,${alpha})`;ctx.lineWidth=1;
       if(doorPanel){const panelH=Math.min(wallH,focal*DOOR_HEIGHT/dist),panelTop=bottom-panelH;ctx.fillStyle='#102421';ctx.fillRect(sx,panelTop,step+1,panelH);ctx.strokeStyle=`rgba(114,255,208,${Math.max(.35,alpha)})`;ctx.beginPath();ctx.moveTo(sx,panelTop);ctx.lineTo(sx,bottom);ctx.stroke();}
-      else{ctx.fillStyle=side?'#0b1916':'#0e1c19';ctx.fillRect(sx,top,step+1,wallH);ctx.beginPath();ctx.moveTo(sx,top);ctx.lineTo(sx,bottom);ctx.stroke();if(dist<10){ctx.strokeStyle=`rgba(126,220,199,${.12+Math.max(0,.2-dist*.015)})`;ctx.beginPath();ctx.moveTo(sx,top+wallH*.76);ctx.lineTo(sx+step,bottom-wallH*.03);ctx.stroke();}}
+      else{ctx.fillStyle=side?'#0b1916':'#0e1c19';ctx.fillRect(sx,top,step+1,wallH);ctx.beginPath();ctx.moveTo(sx,top);ctx.lineTo(sx,bottom);ctx.stroke();}
     }
     // Project the two path edges onto the ground and hide them behind nearer walls.
     function projectPathPoint(x,y){const dx=x-player.x,dy=y-player.y,depth=dx*Math.cos(player.a)+dy*Math.sin(player.a),lateral=-dx*Math.sin(player.a)+dy*Math.cos(player.a);if(depth<.25)return null;const sx=width/2+focal*lateral/depth,sy=horizon+focal*(WALL_HEIGHT/2)/depth;const ray=hits[Math.min(hits.length-1,Math.max(0,Math.floor(sx/step)))];if(ray&&ray.wallHit&&depth>ray.dist+.5)return null;return {sx,sy};}
