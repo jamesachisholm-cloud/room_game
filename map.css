@@ -1,0 +1,27 @@
+:root { color-scheme:dark; --ink:#d8f2ed; --dim:#70a9a0; --glow:#72ffd0; --panel:#0b1916; }
+* { box-sizing:border-box; }
+body { margin:0; padding:30px clamp(16px,4vw,56px) 48px; background:#07100f; color:var(--ink); font:14px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; }
+header { display:flex; justify-content:space-between; align-items:flex-end; gap:24px; max-width:1250px; margin:0 auto 25px; }
+.eyebrow { color:var(--glow); letter-spacing:.2em; margin:0; }
+h1 { margin:3px 0 0; font-size:clamp(28px,4vw,42px); font-weight:500; letter-spacing:.08em; }
+header p:not(.eyebrow) { color:#aac6bf; margin:5px 0 0; }
+nav { display:flex; gap:10px; flex-wrap:wrap; }
+a { color:var(--glow); border:1px solid #70a9a066; padding:8px 11px; text-decoration:none; }
+a:hover { background:#102421; }
+main { max-width:1250px; margin:auto; }
+.guide { border:1px solid #70a9a044; background:var(--panel); padding:14px 18px; margin-bottom:20px; }
+.guide h2 { margin:0 0 6px; font-size:16px; font-weight:500; color:var(--glow); }
+.guide p { margin:6px 0; color:#b8d3ce; }
+code { color:var(--glow); }
+.buildings { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,480px),1fr)); gap:18px; }
+.building-card { border:1px solid #70a9a044; background:#091614; padding:16px; overflow:auto; }
+.card-heading { display:flex; justify-content:space-between; gap:10px; align-items:baseline; margin-bottom:12px; }
+.card-heading h2 { margin:0; font-size:17px; font-weight:500; letter-spacing:.1em; }
+.card-heading span { color:#aac6bf; font-size:12px; }
+.plan { display:block; width:100%; height:auto; background:#07100f; }
+#status { color:#aac6bf; margin:12px 0; }
+.legend { display:flex; align-items:center; gap:8px; color:#aac6bf; margin-top:18px; }
+.wall-key,.door-key,.exit-key { display:inline-block; width:20px; height:3px; margin-left:12px; background:#7edcc7; }
+.door-key,.exit-key { background:var(--glow); }
+.exit-key { opacity:.55; }
+@media(max-width:600px) { header { align-items:flex-start; flex-direction:column; } .card-heading { align-items:flex-start; flex-direction:column; } }

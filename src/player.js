@@ -1,4 +1,4 @@
-import { CELL_FT } from './world.js';
+import { CELL_FT } from './world.js?v=20261011';
 
 export function createPlayer(start) {
   return { ...start };

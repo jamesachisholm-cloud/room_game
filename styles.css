@@ -16,3 +16,6 @@ button { cursor:pointer; color:#07100f; background:var(--glow); border:0; paddin
 #crosshair:before,#crosshair:after { content:""; position:absolute; background:#d8f2ed }
 #crosshair:before { left:5px; top:0; width:1px; height:12px }
 #crosshair:after { top:5px; left:0; width:12px; height:1px }
+
+#map-link { position:fixed; right:20px; bottom:18px; color:var(--glow); background:#07100fba; border:1px solid #70a9a044; padding:8px 12px; text-decoration:none; letter-spacing:.08em; }
+#map-link:hover { background:#102421; }

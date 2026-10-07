@@ -213,9 +213,10 @@ export function createRenderer(canvas, world) {
     }
     context.strokeStyle = 'rgba(114,255,208,.72)';
     context.lineWidth = 1.5;
-    for (const box of world.boxes) {
+    function drawCuboid(box) {
+      const baseZ = box.z ?? 0;
       const corners = [];
-      for (const z of [0, box.h]) {
+      for (const z of [baseZ, baseZ + box.h]) {
         for (const sy of [-1, 1]) {
           for (const sx of [-1, 1]) corners.push({ x: box.x + sx * box.w / 2, y: box.y + sy * box.d / 2, z });
         }
@@ -230,6 +231,33 @@ export function createRenderer(canvas, world) {
             corners[a].x + (corners[b].x - corners[a].x) * t,
             corners[a].y + (corners[b].y - corners[a].y) * t,
             corners[a].z + (corners[b].z - corners[a].z) * t
+          );
+          if (!point || !point.visible || point.sx < -10 || point.sx > width + 10) {
+            pen = false;
+            continue;
+          }
+          if (!pen) {
+            context.moveTo(point.sx, point.sy);
+            pen = true;
+          } else context.lineTo(point.sx, point.sy);
+        }
+        context.stroke();
+      }
+    }
+    for (const box of world.boxes) drawCuboid(box);
+    for (const part of world.cat.cuboids) drawCuboid(part);
+    for (const line of world.cat.lines) {
+      for (let segment = 0; segment < line.length - 1; segment++) {
+        const start = line[segment];
+        const end = line[segment + 1];
+        context.beginPath();
+        let pen = false;
+        for (let i = 0; i <= 10; i++) {
+          const t = i / 10;
+          const point = projectBoxPoint(
+            start.x + (end.x - start.x) * t,
+            start.y + (end.y - start.y) * t,
+            start.z + (end.z - start.z) * t
           );
           if (!point || !point.visible || point.sx < -10 || point.sx > width + 10) {
             pen = false;

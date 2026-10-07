@@ -1,0 +1,168 @@
+# Editable world plan. Bays are 7x7 map units; grid coordinates start at 0.
+# Repeated room IDs join bays into one room. Door offsets are 0-based from the bay edge.
+# Doorway format: door <room-ID> <room-ID> <offset> [width]. Offsets are 0-based; width defaults to 1 map unit.
+# Exit format: exit <north|east|south|west> <bay-index-along-edge> <offset>.
+
+building A 5 4
+rooms
+01 01 02 03 04
+05 05 06 07 07
+08 08 09 10 10
+08 08 11 12 13
+doors
+door 01 05 3
+door 01 02 3
+door 02 03 3
+door 02 06 3
+door 03 04 3
+door 03 07 3
+door 04 07 3
+door 05 08 3
+door 05 06 3
+door 06 07 3
+door 06 09 3
+door 07 10 3
+door 08 09 2
+door 09 10 3
+door 09 11 3
+door 10 12 3
+door 10 13 3
+door 08 11 3
+door 11 12 3
+door 12 13 3
+exits
+exit east 2 3
+exit south 2 3
+objects
+box 1 1 3.5 3.5 0.9 0.9 0.55
+cat 2 0 3.5 3.5 0.25
+end
+
+building B 6 4
+rooms
+01 02 03 04 05 06
+07 08 09 10 11 12
+13 14 15 16 17 18
+19 20 21 22 23 24
+doors
+door 01 02 2
+door 01 07 2
+door 03 04 2
+door 03 09 3
+door 04 05 2
+door 04 10 2
+door 05 06 2
+door 05 11 4
+door 07 13 2
+door 08 09 2
+door 08 14 4
+door 09 10 2
+door 09 15 3
+door 10 11 2
+door 11 12 2
+door 11 17 4
+door 12 18 3
+door 13 14 2
+door 13 19 2
+door 14 15 2
+door 15 16 2
+door 15 21 3
+door 16 17 2
+door 16 22 2
+door 17 23 4
+door 19 20 2
+door 20 21 2
+door 21 22 2
+door 23 24 2
+exits
+exit west 2 3
+exit south 2 3
+end
+
+building C 6 4
+rooms
+01 02 03 04 05 06
+07 08 09 10 11 12
+13 14 15 16 17 18
+19 20 21 22 23 24
+doors
+door 01 02 2
+door 01 07 2
+door 03 04 2
+door 03 09 3
+door 04 05 2
+door 04 10 2
+door 05 06 2
+door 05 11 4
+door 07 13 2
+door 08 09 2
+door 08 14 4
+door 09 10 2
+door 09 15 3
+door 10 11 2
+door 11 12 2
+door 11 17 4
+door 12 18 3
+door 13 14 2
+door 13 19 2
+door 14 15 2
+door 15 16 2
+door 15 21 3
+door 16 17 2
+door 16 22 2
+door 17 23 4
+door 19 20 2
+door 20 21 2
+door 21 22 2
+door 23 24 2
+exits
+exit north 2 3
+exit west 2 3
+end
+
+building D 6 4
+rooms
+01 02 03 04 05 06
+07 08 09 10 11 12
+13 14 15 16 17 18
+19 20 21 22 23 24
+doors
+door 01 02 2
+door 01 07 2
+door 03 04 2
+door 03 09 3
+door 04 05 2
+door 04 10 2
+door 05 06 2
+door 05 11 4
+door 07 13 2
+door 08 09 2
+door 08 14 4
+door 09 10 2
+door 09 15 3
+door 10 11 2
+door 11 12 2
+door 11 17 4
+door 12 18 3
+door 13 14 2
+door 13 19 2
+door 14 15 2
+door 15 16 2
+door 15 21 3
+door 16 17 2
+door 16 22 2
+door 17 23 4
+door 19 20 2
+door 20 21 2
+door 21 22 2
+door 23 24 2
+exits
+exit east 2 3
+exit north 3 3
+end
+
+connections
+A east B west
+B south C north
+C west D east
+D north A south

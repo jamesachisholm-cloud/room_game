@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Room Lines · Map</title>
+<link rel="stylesheet" href="map.css">
+</head>
+<body>
+<header>
+  <div><p class="eyebrow">ROOM LINES</p><h1>World map</h1><p>Edit the text plan, then refresh this page to preview your changes.</p></div>
+  <nav><a href="index.html">Back to game</a><a href="maps/world.map">Open map source</a></nav>
+</header>
+<main>
+  <section class="guide">
+    <h2>How to edit the map</h2>
+    <p>Open <code>maps/world.map</code>. Each grid cell is a 7×7 bay. Repeating a room number joins those bays into one room; use connected cells to make larger or L-shaped rooms.</p>
+    <p>Internal door lines use room IDs: <code>door 01 05 3</code> connects Rooms 01 and 05, three map units along their shared wall. The offset starts at the west end of a horizontal wall or the north end of a vertical wall. Remove a line to close that doorway. A room pair must share one continuous wall.</p>
+    <p><code>exit east 2 3</code> places an outside door on the building edge using the bay index and offset. The <code>connections</code> section links exits and paths.</p>
+    <p>Object lines are <code>box col row x y width depth height</code> or <code>cat col row x y scale</code>; x and y are map units within the bay. This page is the visual map reference, so save the source and refresh the preview after editing.</p>
+  </section>
+  <div id="status">Loading map…</div>
+  <section id="buildings" class="buildings"></section>
+  <p class="legend"><span class="wall-key"></span> wall <span class="door-key"></span> doorway <span class="exit-key"></span> outside door</p>
+</main>
+<script type="module" src="src/map-preview.js"></script>
+</body>
+</html>
