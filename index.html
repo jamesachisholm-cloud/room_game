@@ -4,15 +4,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Room Lines</title>
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="styles.css?v=20261016">
 </head>
 <body>
 <canvas id="view" aria-label="Wireframe first person room exploration game"></canvas>
-<div id="hud"><div class="card">BUILDING <span id="building">A</span> · ROOM <span id="room">01</span> / <span id="room-count">13</span></div><div class="card" id="outside">INSIDE</div></div>
+<div id="hud"><div class="card">BUILDING <span id="building">A</span> · ROOM <span id="room">01</span> / <span id="room-count">11</span></div><div class="card" id="outside">INSIDE</div></div>
 <div id="crosshair"></div>
 <div id="help">WASD move · mouse look · arrows turn · click to capture mouse</div>
+<aside id="inventory" aria-label="Inventory"><div class="inventory-heading"><span>INVENTORY</span><span id="inventory-count">0 / 10</span></div><ol id="inventory-slots"></ol></aside>
 <a id="map-link" href="map.html" target="_blank" rel="noopener">VIEW MAP</a>
-<div id="intro"><section><h1>ROOM LINES</h1><p>Explore four wireframe buildings in a ring. Building A has 13 rooms in a mix of sizes; Buildings B, C, and D have 24 rooms each. Two exterior doors on each building connect to its neighbors with paths 10 room lengths long.</p><p>Move with <b>W A S D</b> or the arrow keys. Turn with your mouse.</p><button id="start">ENTER THE WORLD</button></section></div>
+<div id="intro"><section><h1>ROOM LINES</h1><p>Explore four wireframe buildings in a ring. Building A has 11 rooms in a mix of sizes; Buildings B, C, and D have 24 rooms each. Two exterior doors on each building connect to its neighbors with paths 10 room lengths long.</p><p>Move with <b>W A S D</b> or the arrow keys. Turn with your mouse. Press <b>E</b> near an object to pick it up. Carry up to <b>10</b> objects; press <b>1–9</b> or <b>0</b> to select a slot, then <b>G</b> to drop that object.</p><button id="start">ENTER THE WORLD</button></section></div>
 <script>
   window.addEventListener('error', event => {
     const help = document.querySelector('#help');
@@ -30,6 +31,6 @@
     }
   }, 4000);
 </script>
-<script type="module" src="./src/main.js?v=20261011"></script>
+<script type="module" src="./src/main.js?v=20261016"></script>
 </body>
 </html>

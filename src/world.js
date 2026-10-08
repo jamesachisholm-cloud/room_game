@@ -5,7 +5,7 @@ const ROOM_FT = 10;
 export const CELL_FT = ROOM_FT / SIZE;
 
 async function loadPlan() {
-  const response = await fetch('./maps/world.map?v=20261011', { cache: 'no-store' });
+  const response = await fetch('./maps/world.map?v=20261016', { cache: 'no-store' });
   if (!response.ok) throw new Error(`Could not load maps/world.map (${response.status})`);
   return parsePlan(await response.text());
 }
@@ -86,7 +86,7 @@ export function parsePlan(text) {
         offset: Number(parts[3]), width: Number(parts[4] ?? 1)
       });
     } else if (section === 'exits' && current && parts[0] === 'exit') {
-      current.exits.push({ side: parts[1], bay: Number(parts[2]), offset: Number(parts[3]) });
+      current.exits.push({ side: parts[1], roomId: parts[2].padStart(2, '0') });
     } else if (section === 'objects' && current && parts[0] === 'box') {
       current.objects.push({ type: 'box', col: Number(parts[1]), row: Number(parts[2]), x: Number(parts[3]), y: Number(parts[4]), w: Number(parts[5]), d: Number(parts[6]), h: Number(parts[7]) });
     } else if (section === 'objects' && current && parts[0] === 'cat') {
@@ -142,10 +142,22 @@ export function parsePlan(text) {
       }
     }
     for (const exit of building.exits) {
-      const edgeLength = exit.side === 'north' || exit.side === 'south' ? building.cols : building.rows;
-      if (!['north', 'east', 'south', 'west'].includes(exit.side) || exit.bay < 0 || exit.bay >= edgeLength || exit.offset < 1 || exit.offset > SIZE - 2) {
-        throw new Error(`Building ${building.name} has an outside door outside the building edge.`);
+      if (!['north', 'east', 'south', 'west'].includes(exit.side) || !roomIdsIn(building.grid).includes(exit.roomId)) {
+        throw new Error(`Building ${building.name} has an outside door with an invalid side or room ID.`);
       }
+      const edgeRooms = exit.side === 'north' ? building.grid[0]
+        : exit.side === 'south' ? building.grid[building.rows - 1]
+        : exit.side === 'west' ? building.grid.map(row => row[0])
+        : building.grid.map(row => row[building.cols - 1]);
+      const bays = edgeRooms.flatMap((roomId, index) => roomId === exit.roomId ? [index] : []);
+      if (!bays.length || bays.at(-1) - bays[0] + 1 !== bays.length) {
+        throw new Error(`Room ${exit.roomId} in Building ${building.name} must touch one continuous segment of the ${exit.side} exterior wall.`);
+      }
+      const start = bays[0] * SIZE;
+      const end = (bays.at(-1) + 1) * SIZE;
+      const position = start + Math.floor((end - start - 1) / 2);
+      exit.bay = Math.floor(position / SIZE);
+      exit.offset = position % SIZE;
     }
   }
   return { buildings, connections };
@@ -306,13 +318,21 @@ export async function createWorld() {
     return cat;
   }
   const boxes = [];
+  const pickups = [];
   let cat = null;
   for (const building of buildings) {
     for (const object of building.objects) {
       const x = building.x + object.col * SIZE + object.x;
       const y = building.y + object.row * SIZE + object.y;
-      if (object.type === 'box') boxes.push({ x, y, w: object.w, d: object.d, h: object.h });
-      if (object.type === 'cat') cat = makeCat(x, y, object.scale);
+      if (object.type === 'box') {
+        const box = { type: 'box', x, y, w: object.w, d: object.d, h: object.h, held: false };
+        boxes.push(box);
+        pickups.push(box);
+      }
+      if (object.type === 'cat') {
+        cat = { ...makeCat(x, y, object.scale), type: 'cat', x, y, scale: object.scale, held: false };
+        pickups.push(cat);
+      }
     }
   }
   const start = { x: placed.A.x + 3.5, y: placed.A.y + 3.5, a: 0 };
@@ -322,7 +342,25 @@ export async function createWorld() {
     roomCount: roomIdsIn(building.grid).length
   }));
   return {
-    buildings, buildingPlans, map, doors, paths, boxes, cat, width, height, start,
+    buildings, buildingPlans, map, doors, paths, boxes, cat, pickups, width, height, start,
+    moveObject(object, x, y) {
+      const dx = x - object.x;
+      const dy = y - object.y;
+      object.x = x;
+      object.y = y;
+      if (object.type === 'cat') {
+        for (const part of object.cuboids) {
+          part.x += dx;
+          part.y += dy;
+        }
+        for (const line of object.lines) {
+          for (const point of line) {
+            point.x += dx;
+            point.y += dy;
+          }
+        }
+      }
+    },
     isWall(x, y) { return x < 0 || y < 0 || x >= width || y >= height ? true : map[y][x] === 1; },
     getRoomAt(x, y) {
       const building = buildings.find(candidate => x >= candidate.x && x < candidate.x + candidate.w && y >= candidate.y && y < candidate.y + candidate.h);

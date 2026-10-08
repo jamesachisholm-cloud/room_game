@@ -1,4 +1,4 @@
-import { createWorld } from './world.js?v=20261011';
+import { createWorld } from './world.js?v=20261016';
 
 const colors = ['#12302a', '#18302b', '#19352e', '#142a27', '#1a3029', '#172d2a', '#16342e'];
 const baySize = 100;

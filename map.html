@@ -16,7 +16,7 @@
     <h2>How to edit the map</h2>
     <p>Open <code>maps/world.map</code>. Each grid cell is a 7×7 bay. Repeating a room number joins those bays into one room; use connected cells to make larger or L-shaped rooms.</p>
     <p>Internal door lines use room IDs: <code>door 01 05 3</code> connects Rooms 01 and 05, three map units along their shared wall. The offset starts at the west end of a horizontal wall or the north end of a vertical wall. Remove a line to close that doorway. A room pair must share one continuous wall.</p>
-    <p><code>exit east 2 3</code> places an outside door on the building edge using the bay index and offset. The <code>connections</code> section links exits and paths.</p>
+    <p><code>exit east 07</code> places an outside door on the east exterior wall of room 07, centered along that room's boundary. The <code>connections</code> section links exits and paths.</p>
     <p>Object lines are <code>box col row x y width depth height</code> or <code>cat col row x y scale</code>; x and y are map units within the bay. This page is the visual map reference, so save the source and refresh the preview after editing.</p>
   </section>
   <div id="status">Loading map…</div>

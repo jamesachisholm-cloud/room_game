@@ -200,7 +200,7 @@ export function createRenderer(canvas, world) {
       }
     }
 
-    function projectBoxPoint(x, y, z) {
+    function projectBoxPoint(x, y, z, ignoreWalls = false) {
       const dx = x - player.x;
       const dy = y - player.y;
       const depth = dx * Math.cos(player.a) + dy * Math.sin(player.a);
@@ -209,11 +209,11 @@ export function createRenderer(canvas, world) {
       const sx = width / 2 + focal * lateral / depth;
       const sy = horizon + focal * (WALL_HEIGHT / 2 - z) / depth;
       const ray = hits[Math.min(hits.length - 1, Math.max(0, Math.floor(sx / step)))];
-      return { sx, sy, visible: !ray || !ray.wallHit || depth <= ray.distance + .5 };
+      return { sx, sy, visible: ignoreWalls || !ray || !ray.wallHit || depth <= ray.distance + .5 };
     }
     context.strokeStyle = 'rgba(114,255,208,.72)';
     context.lineWidth = 1.5;
-    function drawCuboid(box) {
+    function drawCuboid(box, ignoreWalls = false) {
       const baseZ = box.z ?? 0;
       const corners = [];
       for (const z of [baseZ, baseZ + box.h]) {
@@ -230,7 +230,8 @@ export function createRenderer(canvas, world) {
           const point = projectBoxPoint(
             corners[a].x + (corners[b].x - corners[a].x) * t,
             corners[a].y + (corners[b].y - corners[a].y) * t,
-            corners[a].z + (corners[b].z - corners[a].z) * t
+            corners[a].z + (corners[b].z - corners[a].z) * t,
+            ignoreWalls
           );
           if (!point || !point.visible || point.sx < -10 || point.sx > width + 10) {
             pen = false;
@@ -244,33 +245,37 @@ export function createRenderer(canvas, world) {
         context.stroke();
       }
     }
-    for (const box of world.boxes) drawCuboid(box);
-    for (const part of world.cat.cuboids) drawCuboid(part);
-    for (const line of world.cat.lines) {
-      for (let segment = 0; segment < line.length - 1; segment++) {
-        const start = line[segment];
-        const end = line[segment + 1];
-        context.beginPath();
-        let pen = false;
-        for (let i = 0; i <= 10; i++) {
-          const t = i / 10;
-          const point = projectBoxPoint(
-            start.x + (end.x - start.x) * t,
-            start.y + (end.y - start.y) * t,
-            start.z + (end.z - start.z) * t
-          );
-          if (!point || !point.visible || point.sx < -10 || point.sx > width + 10) {
-            pen = false;
-            continue;
+    function drawCat(cat, ignoreWalls = false) {
+      for (const part of cat.cuboids) drawCuboid(part, ignoreWalls);
+      for (const line of cat.lines) {
+        for (let segment = 0; segment < line.length - 1; segment++) {
+          const start = line[segment];
+          const end = line[segment + 1];
+          context.beginPath();
+          let pen = false;
+          for (let i = 0; i <= 10; i++) {
+            const t = i / 10;
+            const point = projectBoxPoint(
+              start.x + (end.x - start.x) * t,
+              start.y + (end.y - start.y) * t,
+              start.z + (end.z - start.z) * t,
+              ignoreWalls
+            );
+            if (!point || !point.visible || point.sx < -10 || point.sx > width + 10) {
+              pen = false;
+              continue;
+            }
+            if (!pen) {
+              context.moveTo(point.sx, point.sy);
+              pen = true;
+            } else context.lineTo(point.sx, point.sy);
           }
-          if (!pen) {
-            context.moveTo(point.sx, point.sy);
-            pen = true;
-          } else context.lineTo(point.sx, point.sy);
+          context.stroke();
         }
-        context.stroke();
       }
     }
+    for (const box of world.boxes) if (!box.held) drawCuboid(box);
+    if (world.cat && !world.cat.held) drawCat(world.cat);
 
     for (const door of visibleDoors.values()) {
       const leftBottom = horizon + focal * WALL_HEIGHT / (2 * door.leftDepth);
