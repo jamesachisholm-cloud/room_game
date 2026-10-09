@@ -66,7 +66,7 @@ export function createRenderer(canvas, world) {
     }
 
     for (let sx = 0; sx < width; sx += step) {
-      const rayAngle = player.a - FOV / 2 + (sx / width) * FOV;
+      const rayAngle = player.a + Math.atan((sx - width / 2) / focal);
       const rayX = Math.cos(rayAngle);
       const rayY = Math.sin(rayAngle);
       let mapX = Math.floor(player.x);
@@ -186,10 +186,21 @@ export function createRenderer(canvas, world) {
     }
     context.strokeStyle = 'rgba(114,255,208,.58)';
     context.lineWidth = 1.4;
+    function trimJunctionEnd(path, endpoint, otherEndpoint) {
+      const crossing = world.paths.some(other => {
+        if (other.axis === path.axis) return false;
+        const low = Math.min(other.from, other.to);
+        const high = Math.max(other.from, other.to);
+        return other.fixed === endpoint && path.fixed > low && path.fixed < high;
+      });
+      return crossing ? endpoint + Math.sign(otherEndpoint - endpoint) * PATH_HALF_WIDTH : endpoint;
+    }
     for (const path of world.paths) {
       for (const offset of [-PATH_HALF_WIDTH, PATH_HALF_WIDTH]) {
-        const low = Math.min(path.from, path.to);
-        const high = Math.max(path.from, path.to);
+        const from = trimJunctionEnd(path, path.from, path.to);
+        const to = trimJunctionEnd(path, path.to, path.from);
+        const low = Math.min(from, to);
+        const high = Math.max(from, to);
         const samples = [];
         for (let value = low; value < high; value += 4) samples.push(value);
         samples.push(high);
