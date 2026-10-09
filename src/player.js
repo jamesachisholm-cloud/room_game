@@ -1,4 +1,4 @@
-import { CELL_FT } from './world.js?v=20261030';
+import { CELL_FT } from './world.js?v=20261032';
 
 export function createPlayer(start) {
   return { ...start, credits: 0, creditFlashId: 0, inventory: Array(10).fill(null), selectedInventorySlot: 0 };
@@ -14,7 +14,7 @@ export function attachPlayerControls(player, canvas, world) {
   }
 
   function objectName(object) {
-    return object.type === 'table' ? 'coffee table' : object.type;
+    return ({ table: 'coffee table', h: 'letter H', telephone: 'old telephone', glasses: 'pair of glasses', toycar: 'toy car' })[object.type] ?? object.type;
   }
 
   function objectRadius(object) {
@@ -89,7 +89,7 @@ export function attachPlayerControls(player, canvas, world) {
     }
     const distances = [1.25, 1, .75, 1.5, 1.75, 2, 2.25, 2.5];
     const matchingPicture = {
-      box: 'box', cat: 'cat', table: 'coffee-table', guitar: 'guitar'
+      box: 'box', cat: 'cat', table: 'coffee-table', guitar: 'guitar', h: 'h', snake: 'snake', apple: 'apple', telephone: 'telephone', glasses: 'glasses'
     }[object.type];
     for (const distance of distances) {
       const x = player.x + Math.cos(player.a) * distance;
@@ -127,7 +127,8 @@ export function attachPlayerControls(player, canvas, world) {
   }
 
   function teleportAtMagicDoor() {
-    const portal = world.magicDoors.find(door => Math.hypot(player.x - door.x, player.y - door.y) < .62);
+    const playerBuilding = world.getRoomAt(player.x, player.y)?.building;
+    const portal = world.magicDoors.find(door => door.building === playerBuilding && Math.hypot(player.x - door.x, player.y - door.y) < .62);
     if (!portal) return;
     const destination = portal.target;
     player.x = destination.landingX;

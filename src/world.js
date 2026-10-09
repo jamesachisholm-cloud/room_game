@@ -5,7 +5,7 @@ const ROOM_FT = 10;
 export const CELL_FT = ROOM_FT / SIZE;
 
 async function loadPlan() {
-  const response = await fetch('./maps/world.map?v=20261030', { cache: 'no-store' });
+  const response = await fetch('./maps/world.map?v=20261032', { cache: 'no-store' });
   if (!response.ok) throw new Error(`Could not load maps/world.map (${response.status})`);
   return parsePlan(await response.text());
 }
@@ -99,6 +99,9 @@ export function parsePlan(text) {
       current.objects.push({ type: 'cat', col: Number(parts[1]), row: Number(parts[2]), x: Number(parts[3]), y: Number(parts[4]), scale: Number(parts[5]), value: Number(parts[6] ?? 20) });
     } else if (section === 'objects' && current && parts[0] === 'guitar') {
       current.objects.push({ type: 'guitar', col: Number(parts[1]), row: Number(parts[2]), x: Number(parts[3]), y: Number(parts[4]), scale: Number(parts[5]), value: Number(parts[6] ?? 25) });
+    } else if (section === 'objects' && current && ['h', 'snake', 'apple', 'telephone', 'glasses', 'toycar'].includes(parts[0])) {
+      const defaultValues = { h: 15, snake: 20, apple: 10, telephone: 30, glasses: 25, toycar: 8 };
+      current.objects.push({ type: parts[0], col: Number(parts[1]), row: Number(parts[2]), x: Number(parts[3]), y: Number(parts[4]), scale: Number(parts[5]), value: Number(parts[6] ?? defaultValues[parts[0]]) });
     } else if (section === 'objects' && current && parts[0] === 'picture') {
       current.objects.push({ type: 'picture', subject: parts[1], col: Number(parts[2]), row: Number(parts[3]), side: parts[4], offset: Number(parts[5]), z: Number(parts[6]), w: Number(parts[7]), h: Number(parts[8]) });
     } else if (section === 'connections') {
@@ -398,6 +401,68 @@ export async function createWorld() {
     for (const z of [.76, .88, 1, 1.1, 1.19, 1.27]) addLine([-.078, -.02, z], [.078, -.02, z]);
     return { lines };
   }
+  function makeSimpleObject(type, x, y, scale) {
+    const lines = [];
+    const addLine = (...points) => lines.push(points.map(([px, py, z]) => ({
+      x: x + px * scale, y: y + py * scale, z: z * scale
+    })));
+    const circle = (cx, cz, rx, rz, py = 0, segments = 12) => {
+      addLine(...Array.from({ length: segments + 1 }, (_, index) => {
+        const angle = index / segments * Math.PI * 2;
+        return [cx + Math.cos(angle) * rx, py, cz + Math.sin(angle) * rz];
+      }));
+    };
+    if (type === 'h') {
+      addLine([-.42, -.13, .08], [-.27, -.13, .08], [-.27, -.13, .92], [-.42, -.13, .92], [-.42, -.13, .08]);
+      addLine([.27, -.13, .08], [.42, -.13, .08], [.42, -.13, .92], [.27, -.13, .92], [.27, -.13, .08]);
+      addLine([-.3, -.14, .48], [.3, -.14, .48]);
+      addLine([-.42, .13, .08], [-.27, .13, .08], [-.27, .13, .92], [-.42, .13, .92], [-.42, .13, .08]);
+      addLine([.27, .13, .08], [.42, .13, .08], [.42, .13, .92], [.27, .13, .92], [.27, .13, .08]);
+      addLine([-.3, .14, .48], [.3, .14, .48]);
+      for (const px of [-.35, .35]) for (const z of [.08, .92]) addLine([px, -.13, z], [px, .13, z]);
+      addLine([-.27, -.13, .48], [-.27, .13, .48]); addLine([.27, -.13, .48], [.27, .13, .48]);
+    } else if (type === 'snake') {
+      addLine([-.58, .12, .1], [-.4, .1, .12], [-.24, -.05, .17], [-.06, -.12, .16], [.12, -.04, .12], [.3, .08, .13], [.47, .06, .19], [.54, -.04, .3]);
+      addLine([.44, -.11, .27], [.59, -.11, .27], [.61, -.11, .37], [.48, -.11, .39], [.44, -.11, .27]);
+      addLine([.5, -.125, .345], [.53, -.125, .345]);
+      addLine([.02, -.1, .16], [.07, -.12, .2], [.12, -.1, .16]);
+    } else if (type === 'apple') {
+      addLine([0, 0, .08], [-.25, 0, .14], [-.38, 0, .34], [-.34, 0, .62], [-.2, 0, .78], [0, 0, .72], [.2, 0, .78], [.34, 0, .62], [.38, 0, .34], [.25, 0, .14], [0, 0, .08]);
+      addLine([0, 0, .72], [.03, 0, .91], [.08, 0, .96]);
+      addLine([.04, -.01, .84], [.22, -.01, .92], [.1, -.01, .78], [.04, -.01, .84]);
+    } else if (type === 'telephone') {
+      addLine([-.47, -.14, .08], [.47, -.14, .08], [.39, -.14, .42], [-.39, -.14, .42], [-.47, -.14, .08]);
+      addLine([-.47, .14, .08], [.47, .14, .08], [.39, .14, .42], [-.39, .14, .42], [-.47, .14, .08]);
+      for (const px of [-.47, .47]) for (const py of [-.14, .14]) addLine([px, py, .08], [px < 0 ? -.39 : .39, py, .42]);
+      circle(0, .29, .22, .09, -.155);
+      circle(0, .29, .12, .05, -.17);
+      for (let index = 0; index < 8; index++) {
+        const angle = index / 8 * Math.PI * 2;
+        circle(Math.cos(angle) * .16, .29 + Math.sin(angle) * .065, .018, .018, -.18, 6);
+      }
+      addLine([-.38, -.12, .46], [-.31, -.12, .67], [-.2, -.12, .73], [.2, -.12, .73], [.31, -.12, .67], [.38, -.12, .46]);
+      addLine([-.38, .12, .46], [-.31, .12, .67], [-.2, .12, .73], [.2, .12, .73], [.31, .12, .67], [.38, .12, .46]);
+      addLine([-.38, -.12, .46], [-.38, .12, .46]); addLine([.38, -.12, .46], [.38, .12, .46]);
+      addLine([-.34, 0, .48], [-.45, 0, .57], [-.5, 0, .69]);
+    } else if (type === 'glasses') {
+      addLine([-.54, -.08, .34], [-.54, -.08, .58], [-.1, -.08, .58], [-.1, -.08, .34], [-.54, -.08, .34]);
+      addLine([.1, -.08, .34], [.1, -.08, .58], [.54, -.08, .58], [.54, -.08, .34], [.1, -.08, .34]);
+      addLine([-.1, -.09, .49], [0, -.11, .46], [.1, -.09, .49]);
+      addLine([-.54, -.08, .54], [-.7, .12, .57], [-.72, .35, .5]);
+      addLine([.54, -.08, .54], [.7, .12, .57], [.72, .35, .5]);
+    } else if (type === 'toycar') {
+      addLine([-.62, -.14, .16], [.62, -.14, .16], [.54, -.14, .39], [.25, -.14, .39], [.1, -.14, .57], [-.25, -.14, .57], [-.42, -.14, .39], [-.55, -.14, .39], [-.62, -.14, .16]);
+      addLine([-.62, .14, .16], [.62, .14, .16], [.54, .14, .39], [.25, .14, .39], [.1, .14, .57], [-.25, .14, .57], [-.42, .14, .39], [-.55, .14, .39], [-.62, .14, .16]);
+      for (const px of [-.4, .4]) {
+        circle(px, .17, .14, .14, -.16);
+        circle(px, .17, .14, .14, .16);
+        addLine([px, -.16, .17], [px, .16, .17]);
+      }
+      addLine([-.24, -.145, .42], [-.17, -.145, .52], [.04, -.145, .52], [.18, -.145, .42]);
+      addLine([-.24, .145, .42], [-.17, .145, .52], [.04, .145, .52], [.18, .145, .42]);
+    }
+    return { lines };
+  }
   function makeWallPicture(building, object) {
     let x;
     let y;
@@ -478,6 +543,35 @@ export async function createWorld() {
       addLine([0, artworkY(.23)], [0, artworkY(.95)]);
       addLine([-.13 * scale, artworkY(.29)], [.13 * scale, artworkY(.29)]);
       addLine([-.11 * scale, artworkY(.36)], [.11 * scale, artworkY(.36)]);
+    } else if (object.subject === 'h') {
+      addLine([-.22 * scale, artworkY(.16)], [-.12 * scale, artworkY(.16)], [-.12 * scale, artworkY(.84)], [-.22 * scale, artworkY(.84)], [-.22 * scale, artworkY(.16)]);
+      addLine([.12 * scale, artworkY(.16)], [.22 * scale, artworkY(.16)], [.22 * scale, artworkY(.84)], [.12 * scale, artworkY(.84)], [.12 * scale, artworkY(.16)]);
+      addLine([-.12 * scale, artworkY(.47)], [.12 * scale, artworkY(.47)]);
+    } else if (object.subject === 'snake') {
+      addLine([-.28 * scale, artworkY(.22)], [-.18 * scale, artworkY(.38)], [-.04 * scale, artworkY(.28)], [.1 * scale, artworkY(.42)], [.23 * scale, artworkY(.34)], [.18 * scale, artworkY(.55)], [.04 * scale, artworkY(.63)], [-.1 * scale, artworkY(.55)], [-.24 * scale, artworkY(.69)], [-.12 * scale, artworkY(.78)], [.04 * scale, artworkY(.73)], [.22 * scale, artworkY(.82)]);
+      addLine([.22 * scale, artworkY(.82)], [.27 * scale, artworkY(.85)], [.25 * scale, artworkY(.77)], [.22 * scale, artworkY(.82)]);
+      addLine([.25 * scale, artworkY(.83)], [.27 * scale, artworkY(.83)]);
+    } else if (object.subject === 'apple') {
+      addLine([0, artworkY(.22)], [-.09 * scale, artworkY(.29)], [-.21 * scale, artworkY(.28)], [-.3 * scale, artworkY(.4)], [-.28 * scale, artworkY(.65)], [-.15 * scale, artworkY(.79)], [0, artworkY(.74)], [.15 * scale, artworkY(.79)], [.28 * scale, artworkY(.65)], [.3 * scale, artworkY(.4)], [.21 * scale, artworkY(.28)], [.09 * scale, artworkY(.29)], [0, artworkY(.22)]);
+      addLine([0, artworkY(.74)], [.015 * scale, artworkY(.9)], [.05 * scale, artworkY(.96)]);
+      addLine([.025 * scale, artworkY(.84)], [.19 * scale, artworkY(.92)], [.09 * scale, artworkY(.78)], [.025 * scale, artworkY(.84)]);
+    } else if (object.subject === 'telephone') {
+      addLine([-.28 * scale, artworkY(.2)], [.28 * scale, artworkY(.2)], [.24 * scale, artworkY(.46)], [-.24 * scale, artworkY(.46)], [-.28 * scale, artworkY(.2)]);
+      addLine([-.28 * scale, artworkY(.2)], [-.24 * scale, artworkY(.46)]);
+      addLine([.28 * scale, artworkY(.2)], [.24 * scale, artworkY(.46)]);
+      addLine([-.21 * scale, artworkY(.56)], [-.18 * scale, artworkY(.72)], [-.1 * scale, artworkY(.78)], [.1 * scale, artworkY(.78)], [.18 * scale, artworkY(.72)], [.21 * scale, artworkY(.56)]);
+      addLine([-.21 * scale, artworkY(.56)], [-.26 * scale, artworkY(.66)], [-.29 * scale, artworkY(.82)]);
+      addLine([.21 * scale, artworkY(.56)], [.26 * scale, artworkY(.66)], [.29 * scale, artworkY(.82)]);
+      addLine([-.1 * scale, artworkY(.25)], [.1 * scale, artworkY(.25)], [.1 * scale, artworkY(.4)], [-.1 * scale, artworkY(.4)], [-.1 * scale, artworkY(.25)]);
+      for (const [u, v] of [[-.06,.29],[0,.29],[.06,.29],[-.06,.36],[0,.36],[.06,.36]]) {
+        addLine([u * scale, artworkY(v)], [(u + .018) * scale, artworkY(v + .015)], [(u - .018) * scale, artworkY(v + .015)], [u * scale, artworkY(v)]);
+      }
+    } else if (object.subject === 'glasses') {
+      addLine([-.3 * scale, artworkY(.42)], [-.29 * scale, artworkY(.65)], [-.04 * scale, artworkY(.65)], [-.03 * scale, artworkY(.42)], [-.3 * scale, artworkY(.42)]);
+      addLine([.03 * scale, artworkY(.42)], [.04 * scale, artworkY(.65)], [.29 * scale, artworkY(.65)], [.3 * scale, artworkY(.42)], [.03 * scale, artworkY(.42)]);
+      addLine([-.03 * scale, artworkY(.58)], [0, artworkY(.54)], [.03 * scale, artworkY(.58)]);
+      addLine([-.3 * scale, artworkY(.62)], [-.37 * scale, artworkY(.67)]);
+      addLine([.3 * scale, artworkY(.62)], [.37 * scale, artworkY(.67)]);
     } else {
       throw new Error(`Unsupported wall picture subject: ${object.subject}`);
     }
@@ -489,6 +583,7 @@ export async function createWorld() {
   const boxes = [];
   const tables = [];
   const guitars = [];
+  const wireObjects = [];
   const pictures = [];
   const pickups = [];
   let cat = null;
@@ -532,6 +627,11 @@ export async function createWorld() {
         guitars.push(guitar);
         pickups.push(guitar);
       }
+      if (['h', 'snake', 'apple', 'telephone', 'glasses', 'toycar'].includes(object.type)) {
+        const wireObject = { ...makeSimpleObject(object.type, x, y, object.scale), type: object.type, x, y, scale: object.scale, value: object.value, held: false };
+        wireObjects.push(wireObject);
+        pickups.push(wireObject);
+      }
     }
   }
   const start = { x: placed.A.x + 3.5, y: placed.A.y + 3.5, a: 0 };
@@ -541,17 +641,19 @@ export async function createWorld() {
     roomCount: roomIdsIn(building.grid).length
   }));
   return {
-    buildings, buildingPlans, map, doors, paths, boxes, tables, guitars, pictures, cat, pickups, magicDoors, magicDoorIds, width, height, start,
+    buildings, buildingPlans, map, doors, paths, boxes, tables, guitars, wireObjects, pictures, cat, pickups, magicDoors, magicDoorIds, width, height, start,
     moveObject(object, x, y) {
       const dx = x - object.x;
       const dy = y - object.y;
       object.x = x;
       object.y = y;
-      if (object.type === 'cat' || object.type === 'guitar') {
-        for (const part of object.cuboids ?? []) {
+      if (object.cuboids) {
+        for (const part of object.cuboids) {
           part.x += dx;
           part.y += dy;
         }
+      }
+      if (object.lines) {
         for (const line of object.lines) {
           for (const point of line) {
             point.x += dx;

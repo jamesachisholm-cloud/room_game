@@ -5,6 +5,7 @@ const FOV = Math.PI / 3;
 
 export function createRenderer(canvas, world) {
   const context = canvas.getContext('2d');
+  const magicDoorById = new Map(world.magicDoors.map(door => [door.id, door]));
   let width = 0;
   let height = 0;
   let pixelRatio = 1;
@@ -50,6 +51,7 @@ export function createRenderer(canvas, world) {
         : { color: 'rgba(114,255,208,.72)', width: 1.5 };
     };
     const visibleDoors = new Map();
+    const playerBuilding = world.getRoomAt(player.x, player.y)?.building;
     context.lineWidth = 1;
     context.strokeStyle = 'rgba(112,169,160,.18)';
     for (let i = 1; i <= 12; i++) {
@@ -99,6 +101,13 @@ export function createRenderer(canvas, world) {
         if (mapX < 0 || mapY < 0 || mapX >= world.width || mapY >= world.height) break;
         const doorId = world.doors.get(`${mapX},${mapY}`);
         if (doorId !== undefined) {
+          const portal = magicDoorById.get(doorId);
+          if (portal && portal.building !== playerBuilding) {
+            hitX = mapX;
+            hitY = mapY;
+            wallHit = true;
+            break;
+          }
           rayDoors.push({ id: doorId, distance });
           if (distance > 1.15) {
             hitX = mapX;
@@ -298,6 +307,7 @@ export function createRenderer(canvas, world) {
     for (const table of world.tables) if (!table.held) for (const part of table.parts) drawCuboid(part, false, objectStyle(table));
     if (world.cat && !world.cat.held) drawWireObject(world.cat, false, objectStyle(world.cat));
     for (const guitar of world.guitars) if (!guitar.held) drawWireObject(guitar, false, objectStyle(guitar));
+    for (const object of world.wireObjects) if (!object.held) drawWireObject(object, false, objectStyle(object));
     for (const picture of world.pictures) {
       const lineStyle = objectStyle(picture);
       context.strokeStyle = lineStyle.color;

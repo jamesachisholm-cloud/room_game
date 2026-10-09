@@ -48,7 +48,8 @@ export function setupHud(canvas) {
         const object = player.inventory[index];
         slot.classList.toggle('selected', index === player.selectedInventorySlot);
         slot.classList.toggle('occupied', Boolean(object));
-        item.textContent = object ? (object.type === 'table' ? 'coffee table' : object.type) : '—';
+        const labels = { table: 'coffee table', h: 'letter H', telephone: 'old telephone', glasses: 'glasses', toycar: 'toy car' };
+        item.textContent = object ? (labels[object.type] ?? object.type) : '—';
       });
       if (room) {
         buildingLabel.textContent = room.building;
