@@ -1,3 +1,5 @@
+import { OBJECT_METADATA } from './object-types.js?v=20261037';
+
 export function setupHud(canvas) {
   const intro = document.querySelector('#intro');
   const startButton = document.querySelector('#start');
@@ -48,8 +50,7 @@ export function setupHud(canvas) {
         const object = player.inventory[index];
         slot.classList.toggle('selected', index === player.selectedInventorySlot);
         slot.classList.toggle('occupied', Boolean(object));
-        const labels = { table: 'coffee table', h: 'letter H', telephone: 'old telephone', glasses: 'glasses', toycar: 'toy car' };
-        item.textContent = object ? (labels[object.type] ?? object.type) : '—';
+        item.textContent = object ? (OBJECT_METADATA[object.type]?.inventoryName ?? object.type) : '—';
       });
       if (room) {
         buildingLabel.textContent = room.building;

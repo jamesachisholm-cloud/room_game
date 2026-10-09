@@ -1,4 +1,5 @@
 import { createWorld } from './world.js?v=20261037';
+import { OBJECT_METADATA, SIMPLE_OBJECT_TYPES } from './object-types.js?v=20261037';
 
 const colors = ['#12302a', '#18302b', '#19352e', '#142a27', '#1a3029', '#172d2a', '#16342e'];
 const baySize = 100;
@@ -89,10 +90,9 @@ function drawObject(svg, object, plan) {
     svg.append(svgElement('circle', { cx: x, cy: y + 3, r: 4, fill: 'none', stroke: '#72ffd0', 'stroke-width': 2 }));
     svg.append(svgElement('line', { x1: x, y1: y, x2: x, y2: y - 12, stroke: '#72ffd0', 'stroke-width': 2 }));
     svg.append(svgElement('line', { x1: x - 2, y1: y - 12, x2: x + 2, y2: y - 12, stroke: '#72ffd0', 'stroke-width': 2 }));
-  } else if (['h', 'snake', 'apple', 'telephone', 'glasses', 'toycar', 'dog', 'penny', 'fish'].includes(object.type)) {
-    const labels = { h: 'H', snake: 'S', apple: 'A', telephone: 'T', glasses: 'G', toycar: 'C', dog: 'D', penny: '¢', fish: 'F' };
+  } else if (SIMPLE_OBJECT_TYPES.includes(object.type)) {
     const marker = svgElement('text', { x, y: y + 4, fill: '#72ffd0', 'font-size': 12, 'font-weight': 'bold', 'text-anchor': 'middle' });
-    marker.textContent = labels[object.type];
+    marker.textContent = OBJECT_METADATA[object.type].mapMarker;
     svg.append(marker);
   } else {
     const r = 4.2;

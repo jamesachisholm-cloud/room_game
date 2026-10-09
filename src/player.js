@@ -1,4 +1,6 @@
 import { CELL_FT } from './world.js?v=20261037';
+import { OBJECT_METADATA } from './object-types.js?v=20261037';
+import { hasClearFootprint } from './placement.js?v=20261037';
 
 export function createPlayer(start) {
   return { ...start, credits: 0, creditFlashId: 0, inventory: Array(10).fill(null), selectedInventorySlot: 0 };
@@ -14,7 +16,7 @@ export function attachPlayerControls(player, canvas, world) {
   }
 
   function objectName(object) {
-    return ({ table: 'coffee table', h: 'letter H', telephone: 'old telephone', glasses: 'pair of glasses', toycar: 'toy car' })[object.type] ?? object.type;
+    return OBJECT_METADATA[object.type]?.name ?? object.type;
   }
 
   function objectRadius(object) {
@@ -71,11 +73,7 @@ export function attachPlayerControls(player, canvas, world) {
   }
 
   function canDropAt(object, x, y) {
-    const hasFootprint = object.type === 'box' || object.type === 'table';
-    const halfX = hasFootprint ? object.w / 2 : object.scale * 1.3;
-    const halfY = hasFootprint ? object.d / 2 : object.scale * .45;
-    const samples = [[x, y], [x - halfX, y], [x + halfX, y], [x, y - halfY], [x, y + halfY]];
-    if (samples.some(([px, py]) => world.isWall(Math.floor(px), Math.floor(py)))) return false;
+    if (!hasClearFootprint(world, object, x, y)) return false;
     return world.pickups.every(other => other === object || other.held ||
       Math.hypot(x - other.x, y - other.y) >= objectRadius(object) + objectRadius(other));
   }
@@ -88,9 +86,7 @@ export function attachPlayerControls(player, canvas, world) {
       return;
     }
     const distances = [1.25, 1, .75, 1.5, 1.75, 2, 2.25, 2.5];
-    const matchingPicture = {
-      box: 'box', cat: 'cat', table: 'coffee-table', guitar: 'guitar', h: 'h', snake: 'snake', apple: 'apple', telephone: 'telephone', glasses: 'glasses', dog: 'dog', penny: 'penny', fish: 'fish'
-    }[object.type];
+    const matchingPicture = OBJECT_METADATA[object.type]?.pictureSubject;
     for (const distance of distances) {
       const x = player.x + Math.cos(player.a) * distance;
       const y = player.y + Math.sin(player.a) * distance;

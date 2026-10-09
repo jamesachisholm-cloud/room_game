@@ -172,20 +172,51 @@ export function createRenderer(canvas, world) {
       }
     }
 
-    function projectGroundPoint(x, y) {
+    function projectPoint(x, y, z = 0, ignoreWalls = false) {
       const dx = x - player.x;
       const dy = y - player.y;
       const depth = dx * Math.cos(player.a) + dy * Math.sin(player.a);
       const lateral = -dx * Math.sin(player.a) + dy * Math.cos(player.a);
       if (depth < .25) return null;
       const sx = width / 2 + focal * lateral / depth;
-      const sy = horizon + focal * (WALL_HEIGHT / 2) / depth;
+      const sy = horizon + focal * (WALL_HEIGHT / 2 - z) / depth;
       const ray = hits[Math.min(hits.length - 1, Math.max(0, Math.floor(sx / step)))];
-      if (ray && ray.wallHit && depth > ray.distance + .5) return null;
-      return { sx, sy };
+      return { sx, sy, visible: ignoreWalls || !ray || !ray.wallHit || depth <= ray.distance + .5 };
     }
-    context.strokeStyle = 'rgba(114,255,208,.58)';
-    context.lineWidth = 1.4;
+    function drawProjectedPolyline(points, style, ignoreWalls = false, subdivisions = 10) {
+      context.strokeStyle = style.color;
+      context.lineWidth = style.width;
+      context.beginPath();
+      let active = false;
+      let lastPoint = null;
+      for (let segment = 0; segment < points.length - 1; segment++) {
+        const start = points[segment];
+        const end = points[segment + 1];
+        for (let index = segment === 0 ? 0 : 1; index <= subdivisions; index++) {
+          const amount = index / subdivisions;
+          const point = projectPoint(
+            start.x + (end.x - start.x) * amount,
+            start.y + (end.y - start.y) * amount,
+            (start.z ?? 0) + ((end.z ?? 0) - (start.z ?? 0)) * amount,
+            ignoreWalls
+          );
+          if (!point || !point.visible || point.sx < -10 || point.sx > width + 10) {
+            active = false;
+            lastPoint = null;
+            continue;
+          }
+          if (!active || Math.abs(point.sx - lastPoint.sx) >= width * .7) {
+            context.moveTo(point.sx, point.sy);
+            active = true;
+          } else {
+            context.lineTo(point.sx, point.sy);
+          }
+          lastPoint = point;
+        }
+      }
+      context.stroke();
+    }
+    const pathStyle = { color: 'rgba(114,255,208,.58)', width: 1.4 };
     function trimJunctionEnd(path, endpoint, otherEndpoint) {
       const crossing = world.paths.some(other => {
         if (other.axis === path.axis) return false;
@@ -204,53 +235,17 @@ export function createRenderer(canvas, world) {
         const samples = [];
         for (let value = low; value < high; value += 4) samples.push(value);
         samples.push(high);
-        context.beginPath();
-        let active = false;
-        let lastPoint = null;
+        const points = [];
         for (const value of samples) {
           const x = path.axis === 'x' ? value : path.fixed + offset;
           const y = path.axis === 'x' ? path.fixed + offset : value;
-          const point = projectGroundPoint(x, y);
-          if (!point || point.sx < -10 || point.sx > width + 10) {
-            if (active) context.stroke();
-            active = false;
-            lastPoint = null;
-            continue;
-          }
-          if (!active) {
-            context.moveTo(point.sx, point.sy);
-            active = true;
-          } else if (Math.abs(point.sx - lastPoint.sx) < width * .7) {
-            context.lineTo(point.sx, point.sy);
-          } else {
-            context.stroke();
-            context.beginPath();
-            context.moveTo(point.sx, point.sy);
-            active = true;
-          }
-          lastPoint = point;
+          points.push({ x, y, z: 0 });
         }
-        if (active) context.stroke();
+        drawProjectedPolyline(points, pathStyle, false, 1);
       }
     }
-
-    function projectBoxPoint(x, y, z, ignoreWalls = false) {
-      const dx = x - player.x;
-      const dy = y - player.y;
-      const depth = dx * Math.cos(player.a) + dy * Math.sin(player.a);
-      const lateral = -dx * Math.sin(player.a) + dy * Math.cos(player.a);
-      if (depth < .25) return null;
-      const sx = width / 2 + focal * lateral / depth;
-      const sy = horizon + focal * (WALL_HEIGHT / 2 - z) / depth;
-      const ray = hits[Math.min(hits.length - 1, Math.max(0, Math.floor(sx / step)))];
-      return { sx, sy, visible: ignoreWalls || !ray || !ray.wallHit || depth <= ray.distance + .5 };
-    }
-    context.strokeStyle = 'rgba(114,255,208,.72)';
-    context.lineWidth = 1.5;
-    function drawCuboid(box, ignoreWalls = false, style = null) {
-      const lineStyle = style ?? { color: 'rgba(114,255,208,.72)', width: 1.5 };
-      context.strokeStyle = lineStyle.color;
-      context.lineWidth = lineStyle.width;
+    const objectLineStyle = { color: 'rgba(114,255,208,.72)', width: 1.5 };
+    function drawCuboid(box, ignoreWalls = false, lineStyle = objectLineStyle) {
       const baseZ = box.z ?? 0;
       const corners = [];
       for (const z of [baseZ, baseZ + box.h]) {
@@ -260,59 +255,12 @@ export function createRenderer(canvas, world) {
       }
       const edges = [[0,1],[0,2],[1,3],[2,3],[4,5],[4,6],[5,7],[6,7],[0,4],[1,5],[2,6],[3,7]];
       for (const [a, b] of edges) {
-        context.beginPath();
-        let pen = false;
-        for (let i = 0; i <= 10; i++) {
-          const t = i / 10;
-          const point = projectBoxPoint(
-            corners[a].x + (corners[b].x - corners[a].x) * t,
-            corners[a].y + (corners[b].y - corners[a].y) * t,
-            corners[a].z + (corners[b].z - corners[a].z) * t,
-            ignoreWalls
-          );
-          if (!point || !point.visible || point.sx < -10 || point.sx > width + 10) {
-            pen = false;
-            continue;
-          }
-          if (!pen) {
-            context.moveTo(point.sx, point.sy);
-            pen = true;
-          } else context.lineTo(point.sx, point.sy);
-        }
-        context.stroke();
+        drawProjectedPolyline([corners[a], corners[b]], lineStyle, ignoreWalls);
       }
     }
-    function drawWireObject(cat, ignoreWalls = false, style = null) {
-      const lineStyle = style ?? { color: 'rgba(114,255,208,.72)', width: 1.5 };
+    function drawWireObject(cat, ignoreWalls = false, lineStyle = objectLineStyle) {
       for (const part of cat.cuboids ?? []) drawCuboid(part, ignoreWalls, lineStyle);
-      context.strokeStyle = lineStyle.color;
-      context.lineWidth = lineStyle.width;
-      for (const line of cat.lines) {
-        for (let segment = 0; segment < line.length - 1; segment++) {
-          const start = line[segment];
-          const end = line[segment + 1];
-          context.beginPath();
-          let pen = false;
-          for (let i = 0; i <= 10; i++) {
-            const t = i / 10;
-            const point = projectBoxPoint(
-              start.x + (end.x - start.x) * t,
-              start.y + (end.y - start.y) * t,
-              start.z + (end.z - start.z) * t,
-              ignoreWalls
-            );
-            if (!point || !point.visible || point.sx < -10 || point.sx > width + 10) {
-              pen = false;
-              continue;
-            }
-            if (!pen) {
-              context.moveTo(point.sx, point.sy);
-              pen = true;
-            } else context.lineTo(point.sx, point.sy);
-          }
-          context.stroke();
-        }
-      }
+      for (const line of cat.lines) drawProjectedPolyline(line, lineStyle, ignoreWalls);
     }
     for (const box of world.boxes) if (!box.held) drawCuboid(box, false, objectStyle(box));
     for (const table of world.tables) if (!table.held) for (const part of table.parts) drawCuboid(part, false, objectStyle(table));
@@ -321,33 +269,7 @@ export function createRenderer(canvas, world) {
     for (const object of world.wireObjects) if (!object.held) drawWireObject(object, false, objectStyle(object));
     for (const picture of world.pictures) {
       const lineStyle = objectStyle(picture);
-      context.strokeStyle = lineStyle.color;
-      context.lineWidth = lineStyle.width;
-      for (const line of picture.lines) {
-        for (let segment = 0; segment < line.length - 1; segment++) {
-          const start = line[segment];
-          const end = line[segment + 1];
-          context.beginPath();
-          let pen = false;
-          for (let i = 0; i <= 10; i++) {
-            const t = i / 10;
-            const point = projectBoxPoint(
-              start.x + (end.x - start.x) * t,
-              start.y + (end.y - start.y) * t,
-              start.z + (end.z - start.z) * t
-            );
-            if (!point || !point.visible || point.sx < -10 || point.sx > width + 10) {
-              pen = false;
-              continue;
-            }
-            if (!pen) {
-              context.moveTo(point.sx, point.sy);
-              pen = true;
-            } else context.lineTo(point.sx, point.sy);
-          }
-          context.stroke();
-        }
-      }
+      for (const line of picture.lines) drawProjectedPolyline(line, lineStyle);
     }
 
     for (const door of visibleDoors.values()) {
