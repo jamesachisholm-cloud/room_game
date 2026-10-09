@@ -21,7 +21,9 @@ code { color:var(--glow); }
 .plan { display:block; width:100%; height:auto; background:#07100f; }
 #status { color:#aac6bf; margin:12px 0; }
 .legend { display:flex; align-items:center; gap:8px; color:#aac6bf; margin-top:18px; }
-.wall-key,.door-key,.exit-key { display:inline-block; width:20px; height:3px; margin-left:12px; background:#7edcc7; }
+.wall-key,.door-key,.exit-key,.picture-key,.magic-key { display:inline-block; width:20px; height:3px; margin-left:12px; background:#7edcc7; }
 .door-key,.exit-key { background:var(--glow); }
+.picture-key { background:#ffd166; }
+.magic-key { background:#e070ff; }
 .exit-key { opacity:.55; }
 @media(max-width:600px) { header { align-items:flex-start; flex-direction:column; } .card-heading { align-items:flex-start; flex-direction:column; } }

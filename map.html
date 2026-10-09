@@ -17,12 +17,13 @@
     <p>Open <code>maps/world.map</code>. Each grid cell is a 7×7 bay. Repeating a room number joins those bays into one room; use connected cells to make larger or L-shaped rooms.</p>
     <p>Internal door lines use room IDs: <code>door 01 05 3</code> connects Rooms 01 and 05, three map units along their shared wall. The offset starts at the west end of a horizontal wall or the north end of a vertical wall. Remove a line to close that doorway. A room pair must share one continuous wall.</p>
     <p><code>exit east 07</code> places an outside door on the east exterior wall of room 07, centered along that room's boundary. The <code>connections</code> section links exits and paths.</p>
-    <p>Object lines are <code>box col row x y width depth height</code> or <code>cat col row x y scale</code>; x and y are map units within the bay. This page is the visual map reference, so save the source and refresh the preview after editing.</p>
+    <p><code>magicdoor north 04 A-B</code> links a room-side portal to the other door with the same pair ID. Each door is centered on the named room's exterior wall.</p>
+    <p>Object lines are <code>box col row x y width depth height</code> or <code>cat col row x y scale</code>. A wall picture is <code>picture cat|dog col row side offset bottom-z width height</code>. Its side is north, east, south, or west; offset runs from the west edge on north/south walls or the north edge on east/west walls. For boxes and cats, x and y are map units within the bay. This page is the visual map reference, so save the source and refresh the preview after editing.</p>
   </section>
   <div id="status">Loading map…</div>
   <section id="buildings" class="buildings"></section>
-  <p class="legend"><span class="wall-key"></span> wall <span class="door-key"></span> doorway <span class="exit-key"></span> outside door</p>
+  <p class="legend"><span class="wall-key"></span> wall <span class="door-key"></span> doorway <span class="exit-key"></span> outside door <span class="picture-key"></span> wall picture <span class="magic-key"></span> magic door</p>
 </main>
-<script type="module" src="src/map-preview.js"></script>
+<script type="module" src="src/map-preview.js?v=20261023"></script>
 </body>
 </html>

@@ -1,4 +1,4 @@
-import { createWorld } from './world.js?v=20261016';
+import { createWorld } from './world.js?v=20261023';
 
 const colors = ['#12302a', '#18302b', '#19352e', '#142a27', '#1a3029', '#172d2a', '#16342e'];
 const baySize = 100;
@@ -61,6 +61,24 @@ function addWall(svg, x1, y1, x2, y2, doorway = null, isExit = false) {
 }
 
 function drawObject(svg, object, plan) {
+  if (object.type === 'picture') {
+    const width = object.w / mapUnitsPerBay * baySize;
+    const offset = object.offset / mapUnitsPerBay * baySize;
+    let x1, y1, x2, y2;
+    if (object.side === 'north' || object.side === 'south') {
+      const y = (object.row + (object.side === 'north' ? 0 : 1)) * baySize;
+      x1 = object.col * baySize + offset - width / 2;
+      x2 = x1 + width;
+      y1 = y2 = y;
+    } else {
+      const x = (object.col + (object.side === 'west' ? 0 : 1)) * baySize;
+      y1 = object.row * baySize + offset - width / 2;
+      y2 = y1 + width;
+      x1 = x2 = x;
+    }
+    svg.append(svgElement('line', { x1, y1, x2, y2, stroke: '#ffd166', 'stroke-width': 5, 'stroke-linecap': 'square' }));
+    return;
+  }
   const x = (object.col + object.x / mapUnitsPerBay) * baySize;
   const y = (object.row + object.y / mapUnitsPerBay) * baySize;
   if (object.type === 'box') {
@@ -123,6 +141,18 @@ function drawBuilding(plan) {
         addWall(group, col * baySize, (row + 1) * baySize, (col + 1) * baySize, (row + 1) * baySize, door ? { offset: door.offset } : null, true);
       }
     }
+  }
+  for (const gate of plan.magicDoors) {
+    const x = gate.side === 'west' ? 0 : gate.side === 'east' ? plan.cols * baySize : (gate.bay * mapUnitsPerBay + gate.offset) / mapUnitsPerBay * baySize + baySize / mapUnitsPerBay / 2;
+    const y = gate.side === 'north' ? 0 : gate.side === 'south' ? plan.rows * baySize : (gate.bay * mapUnitsPerBay + gate.offset) / mapUnitsPerBay * baySize + baySize / mapUnitsPerBay / 2;
+    const horizontal = gate.side === 'north' || gate.side === 'south';
+    group.append(svgElement('line', {
+      x1: horizontal ? x - baySize / mapUnitsPerBay / 2 : x,
+      y1: horizontal ? y : y - baySize / mapUnitsPerBay / 2,
+      x2: horizontal ? x + baySize / mapUnitsPerBay / 2 : x,
+      y2: horizontal ? y : y + baySize / mapUnitsPerBay / 2,
+      stroke: '#e070ff', 'stroke-width': 6, 'stroke-linecap': 'square'
+    }));
   }
   for (const roomId of [...new Set(plan.grid.flat())]) {
     const center = roomCenter(roomId, plan.grid);

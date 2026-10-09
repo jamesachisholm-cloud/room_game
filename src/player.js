@@ -1,4 +1,4 @@
-import { CELL_FT } from './world.js?v=20261016';
+import { CELL_FT } from './world.js?v=20261023';
 
 export function createPlayer(start) {
   return { ...start, inventory: Array(10).fill(null), selectedInventorySlot: 0 };
@@ -84,6 +84,17 @@ export function attachPlayerControls(player, canvas, world) {
     setMessage('No clear space to drop the object here');
   }
 
+  function teleportAtMagicDoor() {
+    const portal = world.magicDoors.find(door => Math.hypot(player.x - door.x, player.y - door.y) < .62);
+    if (!portal) return;
+    const destination = portal.target;
+    player.x = destination.landingX;
+    player.y = destination.landingY;
+    player.a = destination.arrivalAngle;
+    player.teleportFlash = .35;
+    setMessage(`Magic door · Building ${destination.building} Room ${destination.roomId}`);
+  }
+
   function onKeyDown(event) {
     const key = (event.key ?? '').toLowerCase();
     if (!event.repeat && (key === 'e' || event.code === 'KeyE')) {
@@ -129,6 +140,7 @@ export function attachPlayerControls(player, canvas, world) {
   return {
     update(dt, world) {
       player.actionMessageTimer = Math.max(0, (player.actionMessageTimer ?? 0) - dt);
+      player.teleportFlash = Math.max(0, (player.teleportFlash ?? 0) - dt);
       const turn = (keysDown.has('arrowright') ? 1 : 0) - (keysDown.has('arrowleft') ? 1 : 0);
       player.a += turn * dt * 2.1;
       let forward = (keysDown.has('w') || keysDown.has('arrowup') ? 1 : 0) - (keysDown.has('s') || keysDown.has('arrowdown') ? 1 : 0);
@@ -142,6 +154,7 @@ export function attachPlayerControls(player, canvas, world) {
       const radius = .19;
       if (!world.isWall(Math.floor(player.x + dx + Math.sign(dx) * radius), Math.floor(player.y))) player.x += dx;
       if (!world.isWall(Math.floor(player.x), Math.floor(player.y + dy + Math.sign(dy) * radius))) player.y += dy;
+      teleportAtMagicDoor();
     }
   };
 }

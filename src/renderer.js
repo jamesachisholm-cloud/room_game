@@ -69,6 +69,7 @@ export function createRenderer(canvas, world) {
       let hitY = 0;
       let wallHit = false;
       let doorPanel = false;
+      let magicDoorPanel = false;
       const rayDoors = [];
 
       for (let i = 0; i < world.width + world.height; i++) {
@@ -92,6 +93,7 @@ export function createRenderer(canvas, world) {
             hitY = mapY;
             wallHit = true;
             doorPanel = true;
+            magicDoorPanel = world.magicDoorIds.has(doorId);
             break;
           }
         }
@@ -108,7 +110,7 @@ export function createRenderer(canvas, world) {
         const doorDepth = door.distance * Math.cos(rayAngle - player.a);
         let visible = visibleDoors.get(door.id);
         if (!visible) {
-          visibleDoors.set(door.id, visible = { left: sx, right: sx + step, leftDepth: doorDepth, rightDepth: doorDepth });
+          visibleDoors.set(door.id, visible = { left: sx, right: sx + step, leftDepth: doorDepth, rightDepth: doorDepth, magic: world.magicDoorIds.has(door.id) });
         } else {
           if (sx < visible.left) {
             visible.left = sx;
@@ -132,9 +134,9 @@ export function createRenderer(canvas, world) {
       if (doorPanel) {
         const panelHeight = Math.min(wallHeight, focal * DOOR_HEIGHT / distance);
         const panelTop = bottom - panelHeight;
-        context.fillStyle = '#102421';
+        context.fillStyle = magicDoorPanel ? '#24102e' : '#102421';
         context.fillRect(sx, panelTop, step + 1, panelHeight);
-        context.strokeStyle = `rgba(114,255,208,${Math.max(.35, alpha)})`;
+        context.strokeStyle = magicDoorPanel ? 'rgba(224,112,255,.95)' : `rgba(114,255,208,${Math.max(.35, alpha)})`;
         context.beginPath();
         context.moveTo(sx, panelTop);
         context.lineTo(sx, bottom);
@@ -276,12 +278,41 @@ export function createRenderer(canvas, world) {
     }
     for (const box of world.boxes) if (!box.held) drawCuboid(box);
     if (world.cat && !world.cat.held) drawCat(world.cat);
+    for (const picture of world.pictures) {
+      for (const line of picture.lines) {
+        for (let segment = 0; segment < line.length - 1; segment++) {
+          const start = line[segment];
+          const end = line[segment + 1];
+          context.beginPath();
+          let pen = false;
+          for (let i = 0; i <= 10; i++) {
+            const t = i / 10;
+            const point = projectBoxPoint(
+              start.x + (end.x - start.x) * t,
+              start.y + (end.y - start.y) * t,
+              start.z + (end.z - start.z) * t
+            );
+            if (!point || !point.visible || point.sx < -10 || point.sx > width + 10) {
+              pen = false;
+              continue;
+            }
+            if (!pen) {
+              context.moveTo(point.sx, point.sy);
+              pen = true;
+            } else context.lineTo(point.sx, point.sy);
+          }
+          context.stroke();
+        }
+      }
+    }
 
     for (const door of visibleDoors.values()) {
       const leftBottom = horizon + focal * WALL_HEIGHT / (2 * door.leftDepth);
       const rightBottom = horizon + focal * WALL_HEIGHT / (2 * door.rightDepth);
       const leftTop = leftBottom - focal * DOOR_HEIGHT / door.leftDepth;
       const rightTop = rightBottom - focal * DOOR_HEIGHT / door.rightDepth;
+      context.strokeStyle = door.magic ? '#e070ff' : 'rgba(114,255,208,.72)';
+      context.lineWidth = door.magic ? 2.5 : 1.5;
       context.beginPath();
       context.moveTo(door.left, leftTop);
       context.lineTo(door.right, rightTop);
@@ -289,6 +320,11 @@ export function createRenderer(canvas, world) {
       context.lineTo(door.left, leftBottom);
       context.closePath();
       context.stroke();
+    }
+    if (player.teleportFlash > 0) {
+      const alpha = Math.min(.4, player.teleportFlash * 1.15);
+      context.fillStyle = `rgba(214,128,255,${alpha})`;
+      context.fillRect(0, 0, width, height);
     }
   }
 

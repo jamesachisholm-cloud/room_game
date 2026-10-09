@@ -5,7 +5,7 @@ const ROOM_FT = 10;
 export const CELL_FT = ROOM_FT / SIZE;
 
 async function loadPlan() {
-  const response = await fetch('./maps/world.map?v=20261016', { cache: 'no-store' });
+  const response = await fetch('./maps/world.map?v=20261023', { cache: 'no-store' });
   if (!response.ok) throw new Error(`Could not load maps/world.map (${response.status})`);
   return parsePlan(await response.text());
 }
@@ -61,7 +61,7 @@ export function parsePlan(text) {
     if (!line) continue;
     const parts = line.split(/\s+/);
     if (parts[0] === 'building') {
-      current = { name: parts[1], cols: Number(parts[2]), rows: Number(parts[3]), grid: [], doors: [], exits: [], objects: [] };
+      current = { name: parts[1], cols: Number(parts[2]), rows: Number(parts[3]), grid: [], doors: [], exits: [], magicDoors: [], objects: [] };
       buildings.push(current);
       section = null;
     } else if (parts[0] === 'rooms' && current) {
@@ -70,6 +70,8 @@ export function parsePlan(text) {
       section = 'doors';
     } else if (parts[0] === 'exits' && current) {
       section = 'exits';
+    } else if (parts[0] === 'magicdoors' && current) {
+      section = 'magicdoors';
     } else if (parts[0] === 'objects' && current) {
       section = 'objects';
     } else if (parts[0] === 'end') {
@@ -87,10 +89,14 @@ export function parsePlan(text) {
       });
     } else if (section === 'exits' && current && parts[0] === 'exit') {
       current.exits.push({ side: parts[1], roomId: parts[2].padStart(2, '0') });
+    } else if (section === 'magicdoors' && current && parts[0] === 'magicdoor') {
+      current.magicDoors.push({ side: parts[1], roomId: parts[2].padStart(2, '0'), pairId: parts[3] });
     } else if (section === 'objects' && current && parts[0] === 'box') {
       current.objects.push({ type: 'box', col: Number(parts[1]), row: Number(parts[2]), x: Number(parts[3]), y: Number(parts[4]), w: Number(parts[5]), d: Number(parts[6]), h: Number(parts[7]) });
     } else if (section === 'objects' && current && parts[0] === 'cat') {
       current.objects.push({ type: 'cat', col: Number(parts[1]), row: Number(parts[2]), x: Number(parts[3]), y: Number(parts[4]), scale: Number(parts[5]) });
+    } else if (section === 'objects' && current && parts[0] === 'picture') {
+      current.objects.push({ type: 'picture', subject: parts[1], col: Number(parts[2]), row: Number(parts[3]), side: parts[4], offset: Number(parts[5]), z: Number(parts[6]), w: Number(parts[7]), h: Number(parts[8]) });
     } else if (section === 'connections') {
       connections.push({ fromBuilding: parts[0], fromSide: parts[1], toBuilding: parts[2], toSide: parts[3] });
     } else {
@@ -159,7 +165,28 @@ export function parsePlan(text) {
       exit.bay = Math.floor(position / SIZE);
       exit.offset = position % SIZE;
     }
+    for (const gate of building.magicDoors) {
+      if (!['north', 'east', 'south', 'west'].includes(gate.side) || !roomIdsIn(building.grid).includes(gate.roomId) || !gate.pairId) {
+        throw new Error(`Building ${building.name} has a magic door with an invalid side, room ID, or pair ID.`);
+      }
+      const edgeRooms = gate.side === 'north' ? building.grid[0]
+        : gate.side === 'south' ? building.grid[building.rows - 1]
+        : gate.side === 'west' ? building.grid.map(row => row[0])
+        : building.grid.map(row => row[building.cols - 1]);
+      const bays = edgeRooms.flatMap((roomId, index) => roomId === gate.roomId ? [index] : []);
+      if (!bays.length || bays.at(-1) - bays[0] + 1 !== bays.length) {
+        throw new Error(`Room ${gate.roomId} in Building ${building.name} must touch one continuous segment of the ${gate.side} exterior wall.`);
+      }
+      const start = bays[0] * SIZE;
+      const end = (bays.at(-1) + 1) * SIZE;
+      const position = start + Math.floor((end - start - 1) / 2);
+      gate.bay = Math.floor(position / SIZE);
+      gate.offset = position % SIZE;
+    }
   }
+  const pairCounts = new Map();
+  for (const building of buildings) for (const gate of building.magicDoors) pairCounts.set(gate.pairId, (pairCounts.get(gate.pairId) ?? 0) + 1);
+  for (const [pairId, count] of pairCounts) if (count !== 2) throw new Error(`Magic door pair ${pairId} must have exactly two doors.`);
   return { buildings, connections };
 }
 
@@ -271,6 +298,36 @@ export async function createWorld() {
     }
   }
 
+  const magicDoors = [];
+  const magicDoorIds = new Set();
+  for (const building of buildings) {
+    for (const definition of building.magicDoors) {
+      const cell = exitCell(building, definition);
+      const doorId = nextDoorId++;
+      openDoorCell(cell.x, cell.y, doorId);
+      const portal = {
+        id: doorId, pairId: definition.pairId, building: building.name, roomId: definition.roomId,
+        side: definition.side, bay: definition.bay, offset: definition.offset,
+        x: cell.x + .5, y: cell.y + .5
+      };
+      if (definition.side === 'north') { portal.landingX = portal.x; portal.landingY = building.y + 1.5; portal.arrivalAngle = Math.PI / 2; }
+      if (definition.side === 'south') { portal.landingX = portal.x; portal.landingY = building.y + building.h - 1.5; portal.arrivalAngle = -Math.PI / 2; }
+      if (definition.side === 'west') { portal.landingX = building.x + 1.5; portal.landingY = portal.y; portal.arrivalAngle = 0; }
+      if (definition.side === 'east') { portal.landingX = building.x + building.w - 1.5; portal.landingY = portal.y; portal.arrivalAngle = Math.PI; }
+      magicDoors.push(portal);
+      magicDoorIds.add(doorId);
+    }
+  }
+  const magicDoorPairs = new Map();
+  for (const portal of magicDoors) {
+    if (!magicDoorPairs.has(portal.pairId)) magicDoorPairs.set(portal.pairId, []);
+    magicDoorPairs.get(portal.pairId).push(portal);
+  }
+  for (const pair of magicDoorPairs.values()) {
+    pair[0].target = pair[1];
+    pair[1].target = pair[0];
+  }
+
   const paths = plan.connections.map(connection => {
     const firstBuilding = placed[connection.fromBuilding];
     const secondBuilding = placed[connection.toBuilding];
@@ -317,11 +374,74 @@ export async function createWorld() {
     }
     return cat;
   }
+  function makeWallPicture(building, object) {
+    let x;
+    let y;
+    const alongX = object.side === 'north' || object.side === 'south';
+    if (object.side === 'north') {
+      x = building.x + object.col * SIZE + object.offset;
+      y = building.y + object.row * SIZE + 1 + .035;
+    } else if (object.side === 'south') {
+      x = building.x + object.col * SIZE + object.offset;
+      y = building.y + (object.row + 1) * SIZE - 1 - .035;
+    } else if (object.side === 'west') {
+      x = building.x + object.col * SIZE + 1 + .035;
+      y = building.y + object.row * SIZE + object.offset;
+    } else if (object.side === 'east') {
+      x = building.x + (object.col + 1) * SIZE - 1 - .035;
+      y = building.y + object.row * SIZE + object.offset;
+    } else {
+      throw new Error(`Picture in Building ${building.name} has an invalid wall side.`);
+    }
+    const point = (u, v) => alongX
+      ? { x: x + u, y, z: object.z + v }
+      : { x, y: y + u, z: object.z + v };
+    const lines = [];
+    const addLine = (...points) => lines.push(points.map(([u, v]) => point(u, v)));
+    const halfW = object.w / 2;
+    const h = object.h;
+    addLine([-halfW, 0], [halfW, 0], [halfW, h], [-halfW, h], [-halfW, 0]);
+    const scale = Math.min(object.w / 1.6, object.h / .72);
+    const hangRise = scale * .22;
+    const stringHalfWidth = halfW * .42;
+    const pinRadius = scale * .035;
+    addLine([-stringHalfWidth, h], [0, h + hangRise], [stringHalfWidth, h]);
+    addLine([-pinRadius, h + hangRise], [0, h + hangRise + pinRadius], [pinRadius, h + hangRise], [0, h + hangRise - pinRadius], [-pinRadius, h + hangRise]);
+    if (object.subject === 'dog') {
+      addLine([-.17 * scale, .42 * h], [-.17 * scale, .73 * h], [.17 * scale, .73 * h], [.17 * scale, .42 * h], [-.17 * scale, .42 * h]);
+      addLine([-.17 * scale, .68 * h], [-.29 * scale, .66 * h], [-.27 * scale, .39 * h], [-.16 * scale, .43 * h]);
+      addLine([.17 * scale, .68 * h], [.29 * scale, .66 * h], [.27 * scale, .39 * h], [.16 * scale, .43 * h]);
+      addLine([-.09 * scale, .61 * h], [-.06 * scale, .61 * h]);
+      addLine([.06 * scale, .61 * h], [.09 * scale, .61 * h]);
+      addLine([-.12 * scale, .49 * h], [-.12 * scale, .39 * h], [0, .33 * h], [.12 * scale, .39 * h], [.12 * scale, .49 * h]);
+      addLine([-.035 * scale, .43 * h], [.035 * scale, .43 * h]);
+      addLine([-.12 * scale, .34 * h], [-.12 * scale, .12 * h], [.12 * scale, .12 * h], [.12 * scale, .34 * h]);
+      addLine([.12 * scale, .17 * h], [.25 * scale, .22 * h], [.25 * scale, .32 * h]);
+    } else if (object.subject === 'cat') {
+      addLine([-.19 * scale, .36 * h], [.19 * scale, .36 * h], [.19 * scale, .72 * h], [-.19 * scale, .72 * h], [-.19 * scale, .36 * h]);
+      addLine([-.16 * scale, .70 * h], [-.13 * scale, .96 * h], [-.035 * scale, .72 * h]);
+      addLine([.035 * scale, .72 * h], [.13 * scale, .96 * h], [.16 * scale, .70 * h]);
+      addLine([-.09 * scale, .55 * h], [-.06 * scale, .55 * h]);
+      addLine([.06 * scale, .55 * h], [.09 * scale, .55 * h]);
+      addLine([-.15 * scale, .49 * h], [-.27 * scale, .46 * h]);
+      addLine([.15 * scale, .49 * h], [.27 * scale, .46 * h]);
+      addLine([-.13 * scale, .34 * h], [-.13 * scale, .12 * h], [.13 * scale, .12 * h], [.13 * scale, .34 * h]);
+      addLine([.13 * scale, .17 * h], [.25 * scale, .22 * h], [.25 * scale, .32 * h]);
+    } else {
+      throw new Error(`Unsupported wall picture subject: ${object.subject}`);
+    }
+    return { type: 'picture', subject: object.subject, lines, side: object.side, x, y, w: object.w, h: object.h };
+  }
   const boxes = [];
+  const pictures = [];
   const pickups = [];
   let cat = null;
   for (const building of buildings) {
     for (const object of building.objects) {
+      if (object.type === 'picture') {
+        pictures.push(makeWallPicture(building, object));
+        continue;
+      }
       const x = building.x + object.col * SIZE + object.x;
       const y = building.y + object.row * SIZE + object.y;
       if (object.type === 'box') {
@@ -338,11 +458,11 @@ export async function createWorld() {
   const start = { x: placed.A.x + 3.5, y: placed.A.y + 3.5, a: 0 };
   const buildingPlans = buildings.map(building => ({
     name: building.name, x: building.x, y: building.y, cols: building.cols, rows: building.rows,
-    w: building.w, h: building.h, grid: building.grid, doors: building.doors, exits: building.exits, objects: building.objects,
+    w: building.w, h: building.h, grid: building.grid, doors: building.doors, exits: building.exits, magicDoors: building.magicDoors, objects: building.objects,
     roomCount: roomIdsIn(building.grid).length
   }));
   return {
-    buildings, buildingPlans, map, doors, paths, boxes, cat, pickups, width, height, start,
+    buildings, buildingPlans, map, doors, paths, boxes, pictures, cat, pickups, magicDoors, magicDoorIds, width, height, start,
     moveObject(object, x, y) {
       const dx = x - object.x;
       const dy = y - object.y;
