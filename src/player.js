@@ -1,4 +1,4 @@
-import { CELL_FT } from './world.js?v=20261032';
+import { CELL_FT } from './world.js?v=20261037';
 
 export function createPlayer(start) {
   return { ...start, credits: 0, creditFlashId: 0, inventory: Array(10).fill(null), selectedInventorySlot: 0 };
@@ -89,7 +89,7 @@ export function attachPlayerControls(player, canvas, world) {
     }
     const distances = [1.25, 1, .75, 1.5, 1.75, 2, 2.25, 2.5];
     const matchingPicture = {
-      box: 'box', cat: 'cat', table: 'coffee-table', guitar: 'guitar', h: 'h', snake: 'snake', apple: 'apple', telephone: 'telephone', glasses: 'glasses'
+      box: 'box', cat: 'cat', table: 'coffee-table', guitar: 'guitar', h: 'h', snake: 'snake', apple: 'apple', telephone: 'telephone', glasses: 'glasses', dog: 'dog', penny: 'penny', fish: 'fish'
     }[object.type];
     for (const distance of distances) {
       const x = player.x + Math.cos(player.a) * distance;

@@ -1,9 +1,9 @@
 window.__roomLinesModuleLoaded = true;
 
-import { createWorld } from './world.js?v=20261032';
-import { createPlayer, attachPlayerControls } from './player.js?v=20261032';
-import { createRenderer } from './renderer.js?v=20261032';
-import { setupHud } from './hud.js?v=20261032';
+import { createWorld } from './world.js?v=20261037';
+import { createPlayer, attachPlayerControls } from './player.js?v=20261037';
+import { createRenderer } from './renderer.js?v=20261037';
+import { setupHud } from './hud.js?v=20261037';
 
 async function startGame() {
   const canvas = document.querySelector('#view');

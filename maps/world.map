@@ -1,8 +1,8 @@
 # Editable world plan. Bays are 7x7 map units; grid coordinates start at 0.
 # Repeated room IDs join bays into one room. Door offsets are 0-based from the bay edge.
-# Doorway format: door <room-ID> <room-ID> <offset> [width]. Offsets are 0-based; width defaults to 1 map unit.
+# Doorway format: door <room-ID> <room-ID> <offset> [width]. Offsets are 0-based; width defaults to 1 map unit. If the rooms share separate wall segments, the door uses the first one found scanning from the northwest.
 # Exit format: exit <north|east|south|west> <room-ID> [wall-offset]. Without an offset, the exit is centered on that room's boundary; an explicit offset is measured from the west or north edge of the building.
-# Wall picture format: picture <box|cat|dog|guitar|coffee-table|h|snake|apple|telephone|glasses> <bay-col> <bay-row> <side> <offset> <bottom-z> <width> <height>.
+# Wall picture format: picture <box|cat|dog|guitar|coffee-table|h|snake|apple|telephone|glasses|penny|fish> <bay-col> <bay-row> <side> <offset> <bottom-z> <width> <height>.
 # Magic door format: magicdoor <side> <room-ID> <pair-ID>.
 # Coffee table format: table <bay-col> <bay-row> <x> <y> <width> <depth> <height>.
 
@@ -33,11 +33,13 @@ magicdoors
 magicdoor north 04 A-B
 magicdoor north 03 A-D
 objects
-box 1 1 3.5 3.5 0.9 0.9 0.55 5
-cat 2 0 3.5 3.5 0.25 20
-picture dog 1 0 east 3.5 0.18 0.68 0.58
-table 3 3 3.5 3.5 1.05 0.72 0.46 15
-guitar 4 2 3.5 3.5 0.48 25
+picture guitar 0 0 north 3.5 0.18 0.68 0.58
+box 2 0 5.4 1.6 0.9 0.9 0.55 5
+h 3 0 5.4 1.6 0.34 15
+picture snake 4 0 south 3.5 0.18 0.68 0.58
+glasses 0 1 1.6 1.6 0.34 25
+penny 2 1 5.4 1.6 0.28 1
+picture fish 4 1 north 3.5 0.18 0.68 0.58
 end
 
 building B 6 4
@@ -61,10 +63,12 @@ magicdoors
 magicdoor south 06 A-B
 magicdoor east 04 B-D
 objects
-picture cat 5 0 north 3.5 0.18 0.68 0.58
-picture box 2 0 north 3.5 0.18 0.68 0.58
-picture coffee-table 5 3 east 3.5 0.18 0.68 0.58
-picture guitar 4 1 north 3.5 0.18 0.68 0.58
+cat 0 0 1.6 1.6 0.25 20
+picture coffee-table 5 0 north 3.5 0.18 0.68 0.58
+apple 2 1 1.6 1.6 0.33 10
+picture telephone 5 1 north 3.5 0.18 0.68 0.58
+toycar 0 3 5.4 1.6 0.28 8
+picture dog 1 3 west 3.5 0.18 0.68 0.58
 end
 
 building C 6 4
@@ -75,6 +79,7 @@ rooms
 04 07 07 08 08 08
 doors
 door 01 05 3
+door 01 02 3
 door 05 02 3
 door 05 06 3
 door 03 06 3
@@ -87,12 +92,12 @@ exit west 04 20
 magicdoors
 magicdoor south 08 C-D
 objects
-h 0 0 1.6 1.6 0.34 15
+table 0 0 1.7 1.7 1.05 0.72 0.46 15
 snake 5 0 5.4 1.6 0.32 20
-apple 5 1 5.4 5.4 0.33 10
-telephone 0 2 1.6 5.4 0.34 30
-glasses 3 2 1.6 5.4 0.34 25
-toycar 5 2 5.4 5.4 0.28 8
+picture cat 5 1 east 3.5 0.18 0.68 0.58
+picture apple 0 2 north 3.5 0.18 0.68 0.58
+dog 4 2 5.4 1.6 0.34 25
+picture penny 5 2 south 3.5 0.18 0.68 0.58
 end
 
 building D 6 4
@@ -110,6 +115,7 @@ door 05 06 3
 door 06 09 3
 door 01 07 3
 door 07 08 3
+door 07 09 3
 exits
 exit east 09 20
 exit north 05
@@ -118,11 +124,25 @@ magicdoor west 07 A-D
 magicdoor south 09 C-D
 magicdoor east 06 B-D
 objects
-picture h 0 0 north 3.5 0.18 0.68 0.58
-picture snake 1 0 north 3.5 0.18 0.68 0.58
-picture apple 2 0 north 3.5 0.18 0.68 0.58
-picture telephone 3 0 north 3.5 0.18 0.68 0.58
+guitar 0 0 1.6 1.6 0.48 25
+picture box 1 0 north 3.5 0.18 0.68 0.58
+telephone 2 0 5.4 1.6 0.34 30
+picture h 3 0 north 3.5 0.18 0.68 0.58
 picture glasses 4 0 north 5.5 0.18 0.68 0.58
+fish 0 1 5.4 5.4 0.34 18
+end
+
+building E 1 1
+rooms
+01
+doors
+exits
+exit north 01
+exit east 01
+exit south 01
+exit west 01
+magicdoors
+objects
 end
 
 connections
@@ -130,3 +150,10 @@ A east B west
 B south C north
 C west D east
 D north A south
+
+# Spokes from the central building meet each ring path at a T junction.
+paths
+path E north 22.5
+path E east 127.5
+path E south 130.5
+path E west 43.5

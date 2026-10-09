@@ -5,7 +5,7 @@ const ROOM_FT = 10;
 export const CELL_FT = ROOM_FT / SIZE;
 
 async function loadPlan() {
-  const response = await fetch('./maps/world.map?v=20261032', { cache: 'no-store' });
+  const response = await fetch('./maps/world.map?v=20261037', { cache: 'no-store' });
   if (!response.ok) throw new Error(`Could not load maps/world.map (${response.status})`);
   return parsePlan(await response.text());
 }
@@ -53,6 +53,7 @@ function sharedWalls(grid, roomA, roomB) {
 export function parsePlan(text) {
   const buildings = [];
   const connections = [];
+  const junctionPaths = [];
   let current = null;
   let section = null;
 
@@ -80,6 +81,9 @@ export function parsePlan(text) {
     } else if (parts[0] === 'connections') {
       current = null;
       section = 'connections';
+    } else if (parts[0] === 'paths') {
+      current = null;
+      section = 'paths';
     } else if (section === 'rooms' && current) {
       current.grid.push(parts);
     } else if (section === 'doors' && current && parts[0] === 'door') {
@@ -99,19 +103,21 @@ export function parsePlan(text) {
       current.objects.push({ type: 'cat', col: Number(parts[1]), row: Number(parts[2]), x: Number(parts[3]), y: Number(parts[4]), scale: Number(parts[5]), value: Number(parts[6] ?? 20) });
     } else if (section === 'objects' && current && parts[0] === 'guitar') {
       current.objects.push({ type: 'guitar', col: Number(parts[1]), row: Number(parts[2]), x: Number(parts[3]), y: Number(parts[4]), scale: Number(parts[5]), value: Number(parts[6] ?? 25) });
-    } else if (section === 'objects' && current && ['h', 'snake', 'apple', 'telephone', 'glasses', 'toycar'].includes(parts[0])) {
-      const defaultValues = { h: 15, snake: 20, apple: 10, telephone: 30, glasses: 25, toycar: 8 };
+    } else if (section === 'objects' && current && ['h', 'snake', 'apple', 'telephone', 'glasses', 'toycar', 'dog', 'penny', 'fish'].includes(parts[0])) {
+      const defaultValues = { h: 15, snake: 20, apple: 10, telephone: 30, glasses: 25, toycar: 8, dog: 25, penny: 1, fish: 18 };
       current.objects.push({ type: parts[0], col: Number(parts[1]), row: Number(parts[2]), x: Number(parts[3]), y: Number(parts[4]), scale: Number(parts[5]), value: Number(parts[6] ?? defaultValues[parts[0]]) });
     } else if (section === 'objects' && current && parts[0] === 'picture') {
       current.objects.push({ type: 'picture', subject: parts[1], col: Number(parts[2]), row: Number(parts[3]), side: parts[4], offset: Number(parts[5]), z: Number(parts[6]), w: Number(parts[7]), h: Number(parts[8]) });
     } else if (section === 'connections') {
       connections.push({ fromBuilding: parts[0], fromSide: parts[1], toBuilding: parts[2], toSide: parts[3] });
+    } else if (section === 'paths' && parts[0] === 'path') {
+      junctionPaths.push({ building: parts[1], side: parts[2], target: Number(parts[3]) });
     } else {
       throw new Error(`Unrecognized map line: ${rawLine}`);
     }
   }
 
-  if (buildings.length !== 4) throw new Error('The world map must define four buildings.');
+  if (buildings.length !== 5) throw new Error('The world map must define five buildings.');
   for (const building of buildings) {
     if (building.grid.length !== building.rows || building.grid.some(row => row.length !== building.cols)) {
       throw new Error(`Building ${building.name} must have ${building.rows} rows of ${building.cols} room IDs.`);
@@ -143,13 +149,16 @@ export function parsePlan(text) {
         throw new Error(`Building ${building.name} has a doorway that names a missing or identical room.`);
       }
       const walls = sharedWalls(building.grid, door.roomA, door.roomB);
-      if (walls.length !== 1) {
-        throw new Error(`Rooms ${door.roomA} and ${door.roomB} in Building ${building.name} must share one continuous wall for this door format.`);
+      if (!walls.length) {
+        throw new Error(`Rooms ${door.roomA} and ${door.roomB} in Building ${building.name} must share a wall for a door.`);
       }
-      door.orientation = walls[0].orientation;
-      door.line = walls[0].line;
-      door.start = walls[0].start;
-      door.end = walls[0].end;
+      // If rooms touch along multiple separate segments, use the first segment
+      // found while scanning the room grid from north-west to south-east.
+      const wall = walls[0];
+      door.orientation = wall.orientation;
+      door.line = wall.line;
+      door.start = wall.start;
+      door.end = wall.end;
       if (!Number.isInteger(door.width) || door.width < 1 || door.offset < 1 || door.offset + door.width > door.end - door.start - 1) {
         throw new Error(`Door between Rooms ${door.roomA} and ${door.roomB} has an offset outside their shared wall.`);
       }
@@ -198,7 +207,7 @@ export function parsePlan(text) {
   const pairCounts = new Map();
   for (const building of buildings) for (const gate of building.magicDoors) pairCounts.set(gate.pairId, (pairCounts.get(gate.pairId) ?? 0) + 1);
   for (const [pairId, count] of pairCounts) if (count !== 2) throw new Error(`Magic door pair ${pairId} must have exactly two doors.`);
-  return { buildings, connections };
+  return { buildings, connections, junctionPaths };
 }
 
 function roomIdsIn(grid) {
@@ -212,11 +221,14 @@ export async function createWorld() {
   const B = definitions.B;
   const C = definitions.C;
   const D = definitions.D;
+  const E = definitions.E;
   const placed = {
     A: { ...A, x: PAD + SIZE, y: PAD },
     B: { ...B, x: 0, y: PAD },
     C: { ...C, x: 0, y: 0 },
-    D: { ...D, x: 0, y: 0 }
+    D: { ...D, x: 0, y: 0 },
+    // The centre room sits between the four existing ring paths.
+    E: { ...E, x: 82, y: 73 }
   };
   for (const building of Object.values(placed)) {
     building.w = building.cols * SIZE;
@@ -227,7 +239,7 @@ export async function createWorld() {
   placed.C.y = placed.B.y + placed.B.h + ROOM_LENGTHS * SIZE;
   placed.D.x = placed.C.x - placed.C.w - ROOM_LENGTHS * SIZE;
   placed.D.y = placed.C.y;
-  const buildings = [placed.A, placed.B, placed.C, placed.D];
+  const buildings = [placed.A, placed.B, placed.C, placed.D, placed.E];
   const width = Math.max(...buildings.map(building => building.x + building.w)) + PAD;
   const height = Math.max(...buildings.map(building => building.y + building.h)) + PAD;
   const map = Array.from({ length: height }, () => Array(width).fill(0));
@@ -358,6 +370,17 @@ export async function createWorld() {
     const edgeY = (building, side) => side === 'south' ? building.y + building.h : building.y;
     return { axis: 'y', from: edgeY(firstBuilding, connection.fromSide), to: edgeY(secondBuilding, connection.toSide), fixed: firstCell.x + .5 };
   });
+  for (const route of plan.junctionPaths) {
+    const building = placed[route.building];
+    const exit = building?.exits.find(candidate => candidate.side === route.side);
+    if (!building || !exit || !Number.isFinite(route.target)) throw new Error(`Junction path has an invalid building, exit, or target: ${JSON.stringify(route)}`);
+    const cell = exitCell(building, exit);
+    if (route.side === 'north') paths.push({ axis: 'y', from: route.target, to: building.y, fixed: cell.x + .5 });
+    else if (route.side === 'south') paths.push({ axis: 'y', from: building.y + building.h, to: route.target, fixed: cell.x + .5 });
+    else if (route.side === 'west') paths.push({ axis: 'x', from: route.target, to: building.x, fixed: cell.y + .5 });
+    else if (route.side === 'east') paths.push({ axis: 'x', from: building.x + building.w, to: route.target, fixed: cell.y + .5 });
+    else throw new Error(`Junction path has an invalid side: ${route.side}`);
+  }
 
   function makeCat(x, y, scale) {
     const cat = {
@@ -450,6 +473,35 @@ export async function createWorld() {
       addLine([-.1, -.09, .49], [0, -.11, .46], [.1, -.09, .49]);
       addLine([-.54, -.08, .54], [-.7, .12, .57], [-.72, .35, .5]);
       addLine([.54, -.08, .54], [.7, .12, .57], [.72, .35, .5]);
+    } else if (type === 'dog') {
+      for (const py of [-.15, .15]) {
+        addLine([-.48, py, .2], [.25, py, .2], [.25, py, .54], [-.48, py, .54], [-.48, py, .2]);
+        addLine([.2, py, .42], [.48, py, .42], [.58, py, .54], [.53, py, .82], [.27, py, .82], [.2, py, .42]);
+        addLine([.28, py, .78], [.25, py, .96], [.38, py, .82]);
+        addLine([.49, py, .78], [.57, py, .92], [.55, py, .77]);
+        addLine([.43, py - .01, .62], [.47, py - .01, .62]);
+        addLine([-.48, py, .46], [-.62, py, .58], [-.69, py, .76]);
+      }
+      for (const px of [-.35, .12]) for (const py of [-.11, .11]) addLine([px, py, .2], [px, py, .06], [px + .13, py, .06], [px + .13, py, .2]);
+      for (const px of [-.48, .25]) for (const z of [.2, .54]) addLine([px, -.15, z], [px, .15, z]);
+      for (const px of [.25, .58]) for (const z of [.42, .82]) addLine([px, -.15, z], [px, .15, z]);
+    } else if (type === 'penny') {
+      circle(0, .42, .48, .48, -.055, 16);
+      circle(0, .42, .48, .48, .055, 16);
+      for (const angle of [0, Math.PI / 2, Math.PI, Math.PI * 1.5]) {
+        const px = Math.cos(angle) * .48;
+        const z = .42 + Math.sin(angle) * .48;
+        addLine([px, -.055, z], [px, .055, z]);
+      }
+      circle(0, .42, .36, .36, -.06, 16);
+      addLine([-.12, -.07, .57], [0, -.07, .68], [.1, -.07, .57], [0, -.07, .4], [.12, -.07, .4]);
+    } else if (type === 'fish') {
+      addLine([-.54, 0, .34], [-.34, 0, .52], [-.1, 0, .62], [.22, 0, .59], [.43, 0, .47], [.57, 0, .34], [.43, 0, .21], [.22, 0, .1], [-.1, 0, .07], [-.34, 0, .16], [-.54, 0, .34]);
+      addLine([-.54, 0, .34], [-.72, 0, .55], [-.7, 0, .34], [-.72, 0, .13], [-.54, 0, .34]);
+      addLine([-.08, 0, .6], [.06, 0, .82], [.2, 0, .58]);
+      addLine([-.08, 0, .09], [.06, 0, -.08], [.2, 0, .12]);
+      circle(.39, .39, .035, .035, -.01, 8);
+      addLine([.25, -.015, .34], [.05, -.015, .36], [.22, -.015, .4]);
     } else if (type === 'toycar') {
       addLine([-.62, -.14, .16], [.62, -.14, .16], [.54, -.14, .39], [.25, -.14, .39], [.1, -.14, .57], [-.25, -.14, .57], [-.42, -.14, .39], [-.55, -.14, .39], [-.62, -.14, .16]);
       addLine([-.62, .14, .16], [.62, .14, .16], [.54, .14, .39], [.25, .14, .39], [.1, .14, .57], [-.25, .14, .57], [-.42, .14, .39], [-.55, .14, .39], [-.62, .14, .16]);
@@ -572,6 +624,23 @@ export async function createWorld() {
       addLine([-.03 * scale, artworkY(.58)], [0, artworkY(.54)], [.03 * scale, artworkY(.58)]);
       addLine([-.3 * scale, artworkY(.62)], [-.37 * scale, artworkY(.67)]);
       addLine([.3 * scale, artworkY(.62)], [.37 * scale, artworkY(.67)]);
+    } else if (object.subject === 'penny') {
+      addLine(...Array.from({ length: 17 }, (_, index) => {
+        const angle = index / 16 * Math.PI * 2;
+        return [.23 * scale * Math.cos(angle), artworkY(.52 + .38 * Math.sin(angle))];
+      }));
+      addLine(...Array.from({ length: 17 }, (_, index) => {
+        const angle = index / 16 * Math.PI * 2;
+        return [.18 * scale * Math.cos(angle), artworkY(.52 + .3 * Math.sin(angle))];
+      }));
+      addLine([-.035 * scale, artworkY(.3)], [.025 * scale, artworkY(.35)], [.025 * scale, artworkY(.68)], [.095 * scale, artworkY(.68)]);
+    } else if (object.subject === 'fish') {
+      addLine([-.26 * scale, artworkY(.52)], [-.16 * scale, artworkY(.68)], [.02 * scale, artworkY(.76)], [.2 * scale, artworkY(.66)], [.27 * scale, artworkY(.52)], [.2 * scale, artworkY(.38)], [.02 * scale, artworkY(.28)], [-.16 * scale, artworkY(.36)], [-.26 * scale, artworkY(.52)]);
+      addLine([-.25 * scale, artworkY(.52)], [-.37 * scale, artworkY(.7)], [-.35 * scale, artworkY(.52)], [-.37 * scale, artworkY(.34)], [-.25 * scale, artworkY(.52)]);
+      addLine([-.02 * scale, artworkY(.72)], [.06 * scale, artworkY(.88)], [.14 * scale, artworkY(.7)]);
+      addLine([-.02 * scale, artworkY(.31)], [.06 * scale, artworkY(.15)], [.14 * scale, artworkY(.33)]);
+      addLine([.2 * scale, artworkY(.56)], [.08 * scale, artworkY(.52)], [.19 * scale, artworkY(.48)]);
+      addLine([.19 * scale, artworkY(.61)], [.21 * scale, artworkY(.61)]);
     } else {
       throw new Error(`Unsupported wall picture subject: ${object.subject}`);
     }
@@ -627,7 +696,7 @@ export async function createWorld() {
         guitars.push(guitar);
         pickups.push(guitar);
       }
-      if (['h', 'snake', 'apple', 'telephone', 'glasses', 'toycar'].includes(object.type)) {
+      if (['h', 'snake', 'apple', 'telephone', 'glasses', 'toycar', 'dog', 'penny', 'fish'].includes(object.type)) {
         const wireObject = { ...makeSimpleObject(object.type, x, y, object.scale), type: object.type, x, y, scale: object.scale, value: object.value, held: false };
         wireObjects.push(wireObject);
         pickups.push(wireObject);
