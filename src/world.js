@@ -5,7 +5,7 @@ const ROOM_FT = 10;
 export const CELL_FT = ROOM_FT / SIZE;
 
 async function loadPlan() {
-  const response = await fetch('./maps/world.map?v=20261023', { cache: 'no-store' });
+  const response = await fetch('./maps/world.map?v=20261026', { cache: 'no-store' });
   if (!response.ok) throw new Error(`Could not load maps/world.map (${response.status})`);
   return parsePlan(await response.text());
 }
@@ -93,6 +93,8 @@ export function parsePlan(text) {
       current.magicDoors.push({ side: parts[1], roomId: parts[2].padStart(2, '0'), pairId: parts[3] });
     } else if (section === 'objects' && current && parts[0] === 'box') {
       current.objects.push({ type: 'box', col: Number(parts[1]), row: Number(parts[2]), x: Number(parts[3]), y: Number(parts[4]), w: Number(parts[5]), d: Number(parts[6]), h: Number(parts[7]) });
+    } else if (section === 'objects' && current && parts[0] === 'table') {
+      current.objects.push({ type: 'table', col: Number(parts[1]), row: Number(parts[2]), x: Number(parts[3]), y: Number(parts[4]), w: Number(parts[5]), d: Number(parts[6]), h: Number(parts[7]) });
     } else if (section === 'objects' && current && parts[0] === 'cat') {
       current.objects.push({ type: 'cat', col: Number(parts[1]), row: Number(parts[2]), x: Number(parts[3]), y: Number(parts[4]), scale: Number(parts[5]) });
     } else if (section === 'objects' && current && parts[0] === 'picture') {
@@ -401,38 +403,55 @@ export async function createWorld() {
     const halfW = object.w / 2;
     const h = object.h;
     addLine([-halfW, 0], [halfW, 0], [halfW, h], [-halfW, h], [-halfW, 0]);
-    const scale = Math.min(object.w / 1.6, object.h / .72);
-    const hangRise = scale * .22;
+    const hangerScale = Math.min(object.w / 1.6, object.h / .72);
+    const hangRise = hangerScale * .22;
     const stringHalfWidth = halfW * .42;
-    const pinRadius = scale * .035;
+    const pinRadius = hangerScale * .035;
     addLine([-stringHalfWidth, h], [0, h + hangRise], [stringHalfWidth, h]);
     addLine([-pinRadius, h + hangRise], [0, h + hangRise + pinRadius], [pinRadius, h + hangRise], [0, h + hangRise - pinRadius], [-pinRadius, h + hangRise]);
+    const originalArtworkWidth = 1.05;
+    const originalArtworkHeight = .48;
+    const originalArtworkScale = Math.min(originalArtworkWidth / 1.6, originalArtworkHeight / .72);
+    const artworkScale = Math.min(object.w / originalArtworkWidth, object.h / originalArtworkHeight);
+    const scale = originalArtworkScale * artworkScale;
+    const artworkHeight = originalArtworkHeight * artworkScale;
+    const artworkBottom = (h - artworkHeight) / 2;
+    const artworkY = fraction => artworkBottom + fraction * artworkHeight;
     if (object.subject === 'dog') {
-      addLine([-.17 * scale, .42 * h], [-.17 * scale, .73 * h], [.17 * scale, .73 * h], [.17 * scale, .42 * h], [-.17 * scale, .42 * h]);
-      addLine([-.17 * scale, .68 * h], [-.29 * scale, .66 * h], [-.27 * scale, .39 * h], [-.16 * scale, .43 * h]);
-      addLine([.17 * scale, .68 * h], [.29 * scale, .66 * h], [.27 * scale, .39 * h], [.16 * scale, .43 * h]);
-      addLine([-.09 * scale, .61 * h], [-.06 * scale, .61 * h]);
-      addLine([.06 * scale, .61 * h], [.09 * scale, .61 * h]);
-      addLine([-.12 * scale, .49 * h], [-.12 * scale, .39 * h], [0, .33 * h], [.12 * scale, .39 * h], [.12 * scale, .49 * h]);
-      addLine([-.035 * scale, .43 * h], [.035 * scale, .43 * h]);
-      addLine([-.12 * scale, .34 * h], [-.12 * scale, .12 * h], [.12 * scale, .12 * h], [.12 * scale, .34 * h]);
-      addLine([.12 * scale, .17 * h], [.25 * scale, .22 * h], [.25 * scale, .32 * h]);
+      addLine([-.17 * scale, artworkY(.42)], [-.17 * scale, artworkY(.73)], [.17 * scale, artworkY(.73)], [.17 * scale, artworkY(.42)], [-.17 * scale, artworkY(.42)]);
+      addLine([-.17 * scale, artworkY(.68)], [-.29 * scale, artworkY(.66)], [-.27 * scale, artworkY(.39)], [-.16 * scale, artworkY(.43)]);
+      addLine([.17 * scale, artworkY(.68)], [.29 * scale, artworkY(.66)], [.27 * scale, artworkY(.39)], [.16 * scale, artworkY(.43)]);
+      addLine([-.09 * scale, artworkY(.61)], [-.06 * scale, artworkY(.61)]);
+      addLine([.06 * scale, artworkY(.61)], [.09 * scale, artworkY(.61)]);
+      addLine([-.12 * scale, artworkY(.49)], [-.12 * scale, artworkY(.39)], [0, artworkY(.33)], [.12 * scale, artworkY(.39)], [.12 * scale, artworkY(.49)]);
+      addLine([-.035 * scale, artworkY(.43)], [.035 * scale, artworkY(.43)]);
+      addLine([-.12 * scale, artworkY(.34)], [-.12 * scale, artworkY(.12)], [.12 * scale, artworkY(.12)], [.12 * scale, artworkY(.34)]);
+      addLine([.12 * scale, artworkY(.17)], [.25 * scale, artworkY(.22)], [.25 * scale, artworkY(.32)]);
     } else if (object.subject === 'cat') {
-      addLine([-.19 * scale, .36 * h], [.19 * scale, .36 * h], [.19 * scale, .72 * h], [-.19 * scale, .72 * h], [-.19 * scale, .36 * h]);
-      addLine([-.16 * scale, .70 * h], [-.13 * scale, .96 * h], [-.035 * scale, .72 * h]);
-      addLine([.035 * scale, .72 * h], [.13 * scale, .96 * h], [.16 * scale, .70 * h]);
-      addLine([-.09 * scale, .55 * h], [-.06 * scale, .55 * h]);
-      addLine([.06 * scale, .55 * h], [.09 * scale, .55 * h]);
-      addLine([-.15 * scale, .49 * h], [-.27 * scale, .46 * h]);
-      addLine([.15 * scale, .49 * h], [.27 * scale, .46 * h]);
-      addLine([-.13 * scale, .34 * h], [-.13 * scale, .12 * h], [.13 * scale, .12 * h], [.13 * scale, .34 * h]);
-      addLine([.13 * scale, .17 * h], [.25 * scale, .22 * h], [.25 * scale, .32 * h]);
+      addLine([-.19 * scale, artworkY(.36)], [.19 * scale, artworkY(.36)], [.19 * scale, artworkY(.72)], [-.19 * scale, artworkY(.72)], [-.19 * scale, artworkY(.36)]);
+      addLine([-.16 * scale, artworkY(.70)], [-.13 * scale, artworkY(.96)], [-.035 * scale, artworkY(.72)]);
+      addLine([.035 * scale, artworkY(.72)], [.13 * scale, artworkY(.96)], [.16 * scale, artworkY(.70)]);
+      addLine([-.09 * scale, artworkY(.55)], [-.06 * scale, artworkY(.55)]);
+      addLine([.06 * scale, artworkY(.55)], [.09 * scale, artworkY(.55)]);
+      addLine([-.15 * scale, artworkY(.49)], [-.27 * scale, artworkY(.46)]);
+      addLine([.15 * scale, artworkY(.49)], [.27 * scale, artworkY(.46)]);
+      addLine([-.13 * scale, artworkY(.34)], [-.13 * scale, artworkY(.12)], [.13 * scale, artworkY(.12)], [.13 * scale, artworkY(.34)]);
+      addLine([.13 * scale, artworkY(.17)], [.25 * scale, artworkY(.22)], [.25 * scale, artworkY(.32)]);
+    } else if (object.subject === 'coffee-table') {
+      addLine([-.44 * scale, artworkY(.64)], [-.3 * scale, artworkY(.82)], [.3 * scale, artworkY(.82)], [.44 * scale, artworkY(.64)], [-.44 * scale, artworkY(.64)]);
+      addLine([-.44 * scale, artworkY(.64)], [.44 * scale, artworkY(.64)], [.44 * scale, artworkY(.56)], [-.44 * scale, artworkY(.56)], [-.44 * scale, artworkY(.64)]);
+      addLine([-.35 * scale, artworkY(.56)], [-.35 * scale, artworkY(.2)]);
+      addLine([.35 * scale, artworkY(.56)], [.35 * scale, artworkY(.2)]);
+      addLine([-.25 * scale, artworkY(.64)], [-.25 * scale, artworkY(.28)]);
+      addLine([.25 * scale, artworkY(.64)], [.25 * scale, artworkY(.28)]);
+      addLine([-.25 * scale, artworkY(.32)], [.25 * scale, artworkY(.32)]);
     } else {
       throw new Error(`Unsupported wall picture subject: ${object.subject}`);
     }
     return { type: 'picture', subject: object.subject, lines, side: object.side, x, y, w: object.w, h: object.h };
   }
   const boxes = [];
+  const tables = [];
   const pictures = [];
   const pickups = [];
   let cat = null;
@@ -449,6 +468,24 @@ export async function createWorld() {
         boxes.push(box);
         pickups.push(box);
       }
+      if (object.type === 'table') {
+        const topThickness = object.h * .18;
+        const legWidth = Math.min(object.w, object.d) * .13;
+        const legHeight = object.h - topThickness;
+        const table = {
+          type: 'table', x, y, w: object.w, d: object.d, h: object.h, held: false,
+          parts: [
+            { x, y, w: object.w, d: object.d, z: legHeight, h: topThickness },
+            ...[-1, 1].flatMap(sx => [-1, 1].map(sy => ({
+              x: x + sx * (object.w / 2 - legWidth / 2),
+              y: y + sy * (object.d / 2 - legWidth / 2),
+              w: legWidth, d: legWidth, z: 0, h: legHeight
+            })))
+          ]
+        };
+        tables.push(table);
+        pickups.push(table);
+      }
       if (object.type === 'cat') {
         cat = { ...makeCat(x, y, object.scale), type: 'cat', x, y, scale: object.scale, held: false };
         pickups.push(cat);
@@ -462,7 +499,7 @@ export async function createWorld() {
     roomCount: roomIdsIn(building.grid).length
   }));
   return {
-    buildings, buildingPlans, map, doors, paths, boxes, pictures, cat, pickups, magicDoors, magicDoorIds, width, height, start,
+    buildings, buildingPlans, map, doors, paths, boxes, tables, pictures, cat, pickups, magicDoors, magicDoorIds, width, height, start,
     moveObject(object, x, y) {
       const dx = x - object.x;
       const dy = y - object.y;
@@ -478,6 +515,12 @@ export async function createWorld() {
             point.x += dx;
             point.y += dy;
           }
+        }
+      }
+      if (object.type === 'table') {
+        for (const part of object.parts) {
+          part.x += dx;
+          part.y += dy;
         }
       }
     },

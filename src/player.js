@@ -1,4 +1,4 @@
-import { CELL_FT } from './world.js?v=20261023';
+import { CELL_FT } from './world.js?v=20261026';
 
 export function createPlayer(start) {
   return { ...start, inventory: Array(10).fill(null), selectedInventorySlot: 0 };
@@ -13,8 +13,12 @@ export function attachPlayerControls(player, canvas, world) {
     player.actionMessageTimer = 2;
   }
 
+  function objectName(object) {
+    return object.type === 'table' ? 'coffee table' : object.type;
+  }
+
   function objectRadius(object) {
-    return object.type === 'box'
+    return object.type === 'box' || object.type === 'table'
       ? Math.hypot(object.w, object.d) / 2
       : object.scale * 1.3;
   }
@@ -49,12 +53,13 @@ export function attachPlayerControls(player, canvas, world) {
     object.held = true;
     player.inventory[slot] = object;
     player.selectedInventorySlot = slot;
-    setMessage(`Picked up ${object.type} · slot ${slot === 9 ? 0 : slot + 1}`);
+    setMessage(`Picked up ${objectName(object)} · slot ${slot === 9 ? 0 : slot + 1}`);
   }
 
   function canDropAt(object, x, y) {
-    const halfX = object.type === 'box' ? object.w / 2 : object.scale * 1.3;
-    const halfY = object.type === 'box' ? object.d / 2 : object.scale * .45;
+    const hasFootprint = object.type === 'box' || object.type === 'table';
+    const halfX = hasFootprint ? object.w / 2 : object.scale * 1.3;
+    const halfY = hasFootprint ? object.d / 2 : object.scale * .45;
     const samples = [[x, y], [x - halfX, y], [x + halfX, y], [x, y - halfY], [x, y + halfY]];
     if (samples.some(([px, py]) => world.isWall(Math.floor(px), Math.floor(py)))) return false;
     return world.pickups.every(other => other === object || other.held ||
@@ -78,7 +83,7 @@ export function attachPlayerControls(player, canvas, world) {
       player.inventory[slot] = null;
       const nextSlot = player.inventory.findIndex(item => item !== null);
       if (nextSlot >= 0) player.selectedInventorySlot = nextSlot;
-      setMessage(`Dropped ${object.type}`);
+      setMessage(`Dropped ${objectName(object)}`);
       return;
     }
     setMessage('No clear space to drop the object here');
@@ -113,7 +118,7 @@ export function attachPlayerControls(player, canvas, world) {
       const slot = digit === '0' ? 9 : Number(digit) - 1;
       player.selectedInventorySlot = slot;
       const object = player.inventory[slot];
-      setMessage(object ? `Selected ${object.type} · G to drop` : `Inventory slot ${digit} is empty`);
+      setMessage(object ? `Selected ${objectName(object)} · G to drop` : `Inventory slot ${digit} is empty`);
       return;
     }
     if (movementKeys.includes(key)) {

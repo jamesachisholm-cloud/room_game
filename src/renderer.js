@@ -277,6 +277,7 @@ export function createRenderer(canvas, world) {
       }
     }
     for (const box of world.boxes) if (!box.held) drawCuboid(box);
+    for (const table of world.tables) if (!table.held) for (const part of table.parts) drawCuboid(part);
     if (world.cat && !world.cat.held) drawCat(world.cat);
     for (const picture of world.pictures) {
       for (const line of picture.lines) {

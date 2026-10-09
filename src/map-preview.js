@@ -1,4 +1,4 @@
-import { createWorld } from './world.js?v=20261023';
+import { createWorld } from './world.js?v=20261026';
 
 const colors = ['#12302a', '#18302b', '#19352e', '#142a27', '#1a3029', '#172d2a', '#16342e'];
 const baySize = 100;
@@ -81,7 +81,7 @@ function drawObject(svg, object, plan) {
   }
   const x = (object.col + object.x / mapUnitsPerBay) * baySize;
   const y = (object.row + object.y / mapUnitsPerBay) * baySize;
-  if (object.type === 'box') {
+  if (object.type === 'box' || object.type === 'table') {
     const w = object.w / mapUnitsPerBay * baySize;
     const h = object.d / mapUnitsPerBay * baySize;
     svg.append(svgElement('rect', { x: x - w/2, y: y - h/2, width: w, height: h, fill: 'none', stroke: '#72ffd0', 'stroke-width': 2 }));
