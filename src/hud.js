@@ -4,7 +4,6 @@ export function setupHud(canvas) {
   const roomLabel = document.querySelector('#room');
   const roomCount = document.querySelector('#room-count');
   const buildingLabel = document.querySelector('#building');
-  const outsideLabel = document.querySelector('#outside');
   const help = document.querySelector('#help');
   const inventoryCount = document.querySelector('#inventory-count');
   const inventorySlots = document.querySelector('#inventory-slots');
@@ -45,13 +44,11 @@ export function setupHud(canvas) {
         buildingLabel.textContent = room.building;
         roomLabel.textContent = String(room.room).padStart(2, '0');
         roomCount.textContent = String(room.roomCount);
-        outsideLabel.textContent = 'INSIDE';
         help.textContent = actionPrompt;
       } else {
         buildingLabel.textContent = '—';
         roomLabel.textContent = 'OUT';
         roomCount.textContent = '—';
-        outsideLabel.textContent = 'OUTSIDE · OPEN GROUNDS';
         help.textContent = player.actionMessageTimer > 0
           ? actionPrompt
           : 'OUTSIDE · follow paths · E pick up · 1–9/0 select · G drop';
