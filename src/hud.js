@@ -4,6 +4,9 @@ export function setupHud(canvas) {
   const roomLabel = document.querySelector('#room');
   const roomCount = document.querySelector('#room-count');
   const buildingLabel = document.querySelector('#building');
+  const creditsLabel = document.querySelector('#credits');
+  const creditsIndicator = document.querySelector('#credits-card');
+  let lastCreditFlashId = 0;
   const help = document.querySelector('#help');
   const inventoryCount = document.querySelector('#inventory-count');
   const inventorySlots = document.querySelector('#inventory-slots');
@@ -33,6 +36,13 @@ export function setupHud(canvas) {
         ? `${player.actionMessage} · E pick up · 1–9/0 select · G drop`
         : 'WASD move · mouse look · E pick up · 1–9/0 select · G drop';
       const carriedCount = player.inventory.filter(Boolean).length;
+      creditsLabel.textContent = String(player.credits);
+      if (player.creditFlashId !== lastCreditFlashId) {
+        lastCreditFlashId = player.creditFlashId;
+        creditsIndicator.classList.remove('credits-flashes');
+        void creditsIndicator.offsetWidth;
+        creditsIndicator.classList.add('credits-flashes');
+      }
       inventoryCount.textContent = `${carriedCount} / 10`;
       slotElements.forEach(({ slot, item }, index) => {
         const object = player.inventory[index];

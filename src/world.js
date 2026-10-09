@@ -5,7 +5,7 @@ const ROOM_FT = 10;
 export const CELL_FT = ROOM_FT / SIZE;
 
 async function loadPlan() {
-  const response = await fetch('./maps/world.map?v=20261026', { cache: 'no-store' });
+  const response = await fetch('./maps/world.map?v=20261030', { cache: 'no-store' });
   if (!response.ok) throw new Error(`Could not load maps/world.map (${response.status})`);
   return parsePlan(await response.text());
 }
@@ -88,15 +88,17 @@ export function parsePlan(text) {
         offset: Number(parts[3]), width: Number(parts[4] ?? 1)
       });
     } else if (section === 'exits' && current && parts[0] === 'exit') {
-      current.exits.push({ side: parts[1], roomId: parts[2].padStart(2, '0') });
+      current.exits.push({ side: parts[1], roomId: parts[2].padStart(2, '0'), wallOffset: parts[3] === undefined ? null : Number(parts[3]) });
     } else if (section === 'magicdoors' && current && parts[0] === 'magicdoor') {
       current.magicDoors.push({ side: parts[1], roomId: parts[2].padStart(2, '0'), pairId: parts[3] });
     } else if (section === 'objects' && current && parts[0] === 'box') {
-      current.objects.push({ type: 'box', col: Number(parts[1]), row: Number(parts[2]), x: Number(parts[3]), y: Number(parts[4]), w: Number(parts[5]), d: Number(parts[6]), h: Number(parts[7]) });
+      current.objects.push({ type: 'box', col: Number(parts[1]), row: Number(parts[2]), x: Number(parts[3]), y: Number(parts[4]), w: Number(parts[5]), d: Number(parts[6]), h: Number(parts[7]), value: Number(parts[8] ?? 5) });
     } else if (section === 'objects' && current && parts[0] === 'table') {
-      current.objects.push({ type: 'table', col: Number(parts[1]), row: Number(parts[2]), x: Number(parts[3]), y: Number(parts[4]), w: Number(parts[5]), d: Number(parts[6]), h: Number(parts[7]) });
+      current.objects.push({ type: 'table', col: Number(parts[1]), row: Number(parts[2]), x: Number(parts[3]), y: Number(parts[4]), w: Number(parts[5]), d: Number(parts[6]), h: Number(parts[7]), value: Number(parts[8] ?? 15) });
     } else if (section === 'objects' && current && parts[0] === 'cat') {
-      current.objects.push({ type: 'cat', col: Number(parts[1]), row: Number(parts[2]), x: Number(parts[3]), y: Number(parts[4]), scale: Number(parts[5]) });
+      current.objects.push({ type: 'cat', col: Number(parts[1]), row: Number(parts[2]), x: Number(parts[3]), y: Number(parts[4]), scale: Number(parts[5]), value: Number(parts[6] ?? 20) });
+    } else if (section === 'objects' && current && parts[0] === 'guitar') {
+      current.objects.push({ type: 'guitar', col: Number(parts[1]), row: Number(parts[2]), x: Number(parts[3]), y: Number(parts[4]), scale: Number(parts[5]), value: Number(parts[6] ?? 25) });
     } else if (section === 'objects' && current && parts[0] === 'picture') {
       current.objects.push({ type: 'picture', subject: parts[1], col: Number(parts[2]), row: Number(parts[3]), side: parts[4], offset: Number(parts[5]), z: Number(parts[6]), w: Number(parts[7]), h: Number(parts[8]) });
     } else if (section === 'connections') {
@@ -163,9 +165,13 @@ export function parsePlan(text) {
       }
       const start = bays[0] * SIZE;
       const end = (bays.at(-1) + 1) * SIZE;
-      const position = start + Math.floor((end - start - 1) / 2);
+      const position = exit.wallOffset ?? start + Math.floor((end - start - 1) / 2);
+      if (!Number.isInteger(position) || position < start || position >= end || edgeRooms[Math.floor(position / SIZE)] !== exit.roomId) {
+        throw new Error(`Exit for Room ${exit.roomId} in Building ${building.name} has an offset outside its wall.`);
+      }
       exit.bay = Math.floor(position / SIZE);
       exit.offset = position % SIZE;
+      delete exit.wallOffset;
     }
     for (const gate of building.magicDoors) {
       if (!['north', 'east', 'south', 'west'].includes(gate.side) || !roomIdsIn(building.grid).includes(gate.roomId) || !gate.pairId) {
@@ -376,6 +382,22 @@ export async function createWorld() {
     }
     return cat;
   }
+  function makeGuitar(x, y, scale) {
+    const lines = [];
+    const addLine = (...points) => lines.push(points.map(([px, py, z]) => ({
+      x: x + px * scale, y: y + py * scale, z: z * scale
+    })));
+    addLine([0, 0, .12], [-.23, 0, .16], [-.4, 0, .32], [-.36, 0, .52], [-.2, 0, .61], [-.1, 0, .55], [0, 0, .51], [.1, 0, .55], [.2, 0, .61], [.36, 0, .52], [.4, 0, .32], [.23, 0, .16], [0, 0, .12]);
+    addLine([-.085, 0, .53], [-.075, 0, 1.38], [.075, 0, 1.38], [.085, 0, .53]);
+    addLine([-.075, 0, 1.34], [-.12, 0, 1.43], [-.1, 0, 1.57], [.1, 0, 1.57], [.12, 0, 1.43], [.075, 0, 1.34]);
+    addLine([-.12, -.012, .36], [-.08, -.012, .42], [0, -.012, .45], [.08, -.012, .42], [.12, -.012, .36], [.08, -.012, .3], [0, -.012, .27], [-.08, -.012, .3], [-.12, -.012, .36]);
+    addLine([-.13, -.02, .23], [.13, -.02, .23]);
+    for (const offset of [-.045, -.015, .015, .045]) {
+      addLine([offset, -.025, .23], [offset * .7, -.025, 1.39]);
+    }
+    for (const z of [.76, .88, 1, 1.1, 1.19, 1.27]) addLine([-.078, -.02, z], [.078, -.02, z]);
+    return { lines };
+  }
   function makeWallPicture(building, object) {
     let x;
     let y;
@@ -445,13 +467,28 @@ export async function createWorld() {
       addLine([-.25 * scale, artworkY(.64)], [-.25 * scale, artworkY(.28)]);
       addLine([.25 * scale, artworkY(.64)], [.25 * scale, artworkY(.28)]);
       addLine([-.25 * scale, artworkY(.32)], [.25 * scale, artworkY(.32)]);
+    } else if (object.subject === 'box') {
+      addLine([-.32 * scale, artworkY(.2)], [.32 * scale, artworkY(.2)], [.32 * scale, artworkY(.72)], [-.32 * scale, artworkY(.72)], [-.32 * scale, artworkY(.2)]);
+      addLine([-.32 * scale, artworkY(.72)], [0, artworkY(.9)], [.32 * scale, artworkY(.72)]);
+      addLine([0, artworkY(.2)], [0, artworkY(.9)]);
+    } else if (object.subject === 'guitar') {
+      addLine([0, artworkY(.16)], [-.14 * scale, artworkY(.2)], [-.24 * scale, artworkY(.35)], [-.22 * scale, artworkY(.52)], [-.12 * scale, artworkY(.59)], [-.06 * scale, artworkY(.55)], [0, artworkY(.53)], [.06 * scale, artworkY(.55)], [.12 * scale, artworkY(.59)], [.22 * scale, artworkY(.52)], [.24 * scale, artworkY(.35)], [.14 * scale, artworkY(.2)], [0, artworkY(.16)]);
+      addLine([-.055 * scale, artworkY(.54)], [-.045 * scale, artworkY(.9)], [.045 * scale, artworkY(.9)], [.055 * scale, artworkY(.54)]);
+      addLine([-.045 * scale, artworkY(.88)], [-.075 * scale, artworkY(.96)], [.075 * scale, artworkY(.96)], [.045 * scale, artworkY(.88)]);
+      addLine([0, artworkY(.23)], [0, artworkY(.95)]);
+      addLine([-.13 * scale, artworkY(.29)], [.13 * scale, artworkY(.29)]);
+      addLine([-.11 * scale, artworkY(.36)], [.11 * scale, artworkY(.36)]);
     } else {
       throw new Error(`Unsupported wall picture subject: ${object.subject}`);
     }
-    return { type: 'picture', subject: object.subject, lines, side: object.side, x, y, w: object.w, h: object.h };
+    return {
+      type: 'picture', subject: object.subject, lines, side: object.side, x, y, w: object.w, h: object.h,
+      building: building.name, room: Number(building.grid[object.row][object.col])
+    };
   }
   const boxes = [];
   const tables = [];
+  const guitars = [];
   const pictures = [];
   const pickups = [];
   let cat = null;
@@ -464,7 +501,7 @@ export async function createWorld() {
       const x = building.x + object.col * SIZE + object.x;
       const y = building.y + object.row * SIZE + object.y;
       if (object.type === 'box') {
-        const box = { type: 'box', x, y, w: object.w, d: object.d, h: object.h, held: false };
+        const box = { type: 'box', x, y, w: object.w, d: object.d, h: object.h, value: object.value, held: false };
         boxes.push(box);
         pickups.push(box);
       }
@@ -473,7 +510,7 @@ export async function createWorld() {
         const legWidth = Math.min(object.w, object.d) * .13;
         const legHeight = object.h - topThickness;
         const table = {
-          type: 'table', x, y, w: object.w, d: object.d, h: object.h, held: false,
+          type: 'table', x, y, w: object.w, d: object.d, h: object.h, value: object.value, held: false,
           parts: [
             { x, y, w: object.w, d: object.d, z: legHeight, h: topThickness },
             ...[-1, 1].flatMap(sx => [-1, 1].map(sy => ({
@@ -487,8 +524,13 @@ export async function createWorld() {
         pickups.push(table);
       }
       if (object.type === 'cat') {
-        cat = { ...makeCat(x, y, object.scale), type: 'cat', x, y, scale: object.scale, held: false };
+        cat = { ...makeCat(x, y, object.scale), type: 'cat', x, y, scale: object.scale, value: object.value, held: false };
         pickups.push(cat);
+      }
+      if (object.type === 'guitar') {
+        const guitar = { ...makeGuitar(x, y, object.scale), type: 'guitar', x, y, scale: object.scale, value: object.value, held: false };
+        guitars.push(guitar);
+        pickups.push(guitar);
       }
     }
   }
@@ -499,14 +541,14 @@ export async function createWorld() {
     roomCount: roomIdsIn(building.grid).length
   }));
   return {
-    buildings, buildingPlans, map, doors, paths, boxes, tables, pictures, cat, pickups, magicDoors, magicDoorIds, width, height, start,
+    buildings, buildingPlans, map, doors, paths, boxes, tables, guitars, pictures, cat, pickups, magicDoors, magicDoorIds, width, height, start,
     moveObject(object, x, y) {
       const dx = x - object.x;
       const dy = y - object.y;
       object.x = x;
       object.y = y;
-      if (object.type === 'cat') {
-        for (const part of object.cuboids) {
+      if (object.type === 'cat' || object.type === 'guitar') {
+        for (const part of object.cuboids ?? []) {
           part.x += dx;
           part.y += dy;
         }

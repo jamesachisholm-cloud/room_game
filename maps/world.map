@@ -1,8 +1,8 @@
 # Editable world plan. Bays are 7x7 map units; grid coordinates start at 0.
 # Repeated room IDs join bays into one room. Door offsets are 0-based from the bay edge.
 # Doorway format: door <room-ID> <room-ID> <offset> [width]. Offsets are 0-based; width defaults to 1 map unit.
-# Exit format: exit <north|east|south|west> <room-ID>. The exit is centered on that room's exterior wall.
-# Wall picture format: picture <cat|dog> <bay-col> <bay-row> <side> <offset> <bottom-z> <width> <height>.
+# Exit format: exit <north|east|south|west> <room-ID> [wall-offset]. Without an offset, the exit is centered on that room's boundary; an explicit offset is measured from the west or north edge of the building.
+# Wall picture format: picture <box|cat|dog|guitar|coffee-table> <bay-col> <bay-row> <side> <offset> <bottom-z> <width> <height>.
 # Magic door format: magicdoor <side> <room-ID> <pair-ID>.
 # Coffee table format: table <bay-col> <bay-row> <x> <y> <width> <depth> <height>.
 
@@ -32,10 +32,11 @@ exit south 11
 magicdoors
 magicdoor north 04 A-B
 objects
-box 1 1 3.5 3.5 0.9 0.9 0.55
-cat 2 0 3.5 3.5 0.25
+box 1 1 3.5 3.5 0.9 0.9 0.55 5
+cat 2 0 3.5 3.5 0.25 20
 picture dog 1 0 east 3.5 0.18 0.68 0.58
-table 3 3 3.5 3.5 1.05 0.72 0.46
+table 3 3 3.5 3.5 1.05 0.72 0.46 15
+guitar 4 2 3.5 3.5 0.48 25
 end
 
 building B 6 4
@@ -59,88 +60,47 @@ magicdoors
 magicdoor south 06 A-B
 objects
 picture cat 5 0 north 3.5 0.18 0.68 0.58
+picture box 2 0 north 3.5 0.18 0.68 0.58
 picture coffee-table 5 3 east 3.5 0.18 0.68 0.58
+picture guitar 4 1 north 3.5 0.18 0.68 0.58
 end
 
 building C 6 4
 rooms
-01 02 03 04 05 06
-07 08 09 10 11 12
-13 14 15 16 17 18
-19 20 21 22 23 24
+01 01 02 02 02 02
+01 01 01 02 02 03
+04 01 01 05 05 06
+04 07 07 08 08 08
 doors
-door 01 02 2
-door 01 07 2
-door 03 04 2
-door 03 09 3
-door 04 05 2
-door 04 10 2
-door 05 06 2
-door 05 11 4
-door 07 13 2
-door 08 09 2
-door 08 14 4
-door 09 10 2
-door 09 15 3
-door 10 11 2
-door 11 12 2
-door 11 17 4
-door 12 18 3
-door 13 14 2
-door 13 19 2
-door 14 15 2
-door 15 16 2
-door 15 21 3
-door 16 17 2
-door 16 22 2
-door 17 23 4
-door 19 20 2
-door 20 21 2
-door 21 22 2
-door 23 24 2
+door 01 05 3
+door 05 02 3
+door 05 06 3
+door 03 06 3
+door 05 08 3
+door 08 07 3
+door 07 04 3
 exits
-exit north 01
-exit west 13
+exit north 01 3
+exit west 04 20
 end
 
 building D 6 4
 rooms
 01 02 03 04 05 06
-07 08 09 10 11 12
-13 14 15 16 17 18
-19 20 21 22 23 24
+07 08 08 08 08 09
+09 08 08 08 08 09
+09 09 09 09 09 09
 doors
-door 01 02 2
-door 01 07 2
-door 03 04 2
-door 03 09 3
-door 04 05 2
-door 04 10 2
-door 05 06 2
-door 05 11 4
-door 07 13 2
-door 08 09 2
-door 08 14 4
-door 09 10 2
-door 09 15 3
-door 10 11 2
-door 11 12 2
-door 11 17 4
-door 12 18 3
-door 13 14 2
-door 13 19 2
-door 14 15 2
-door 15 16 2
-door 15 21 3
-door 16 17 2
-door 16 22 2
-door 17 23 4
-door 19 20 2
-door 20 21 2
-door 21 22 2
-door 23 24 2
+door 01 02 3
+door 02 03 3
+door 03 04 3
+door 04 05 3
+door 05 06 3
+door 06 09 3
+door 01 07 3
+door 07 08 3
 exits
-exit east 18
+exit east 09 20
 exit north 05
 end
 

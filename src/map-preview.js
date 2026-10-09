@@ -1,4 +1,4 @@
-import { createWorld } from './world.js?v=20261026';
+import { createWorld } from './world.js?v=20261030';
 
 const colors = ['#12302a', '#18302b', '#19352e', '#142a27', '#1a3029', '#172d2a', '#16342e'];
 const baySize = 100;
@@ -85,6 +85,10 @@ function drawObject(svg, object, plan) {
     const w = object.w / mapUnitsPerBay * baySize;
     const h = object.d / mapUnitsPerBay * baySize;
     svg.append(svgElement('rect', { x: x - w/2, y: y - h/2, width: w, height: h, fill: 'none', stroke: '#72ffd0', 'stroke-width': 2 }));
+  } else if (object.type === 'guitar') {
+    svg.append(svgElement('circle', { cx: x, cy: y + 3, r: 4, fill: 'none', stroke: '#72ffd0', 'stroke-width': 2 }));
+    svg.append(svgElement('line', { x1: x, y1: y, x2: x, y2: y - 12, stroke: '#72ffd0', 'stroke-width': 2 }));
+    svg.append(svgElement('line', { x1: x - 2, y1: y - 12, x2: x + 2, y2: y - 12, stroke: '#72ffd0', 'stroke-width': 2 }));
   } else {
     const r = 4.2;
     svg.append(svgElement('circle', { cx: x, cy: y, r, fill: '#72ffd0' }));

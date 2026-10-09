@@ -37,6 +37,18 @@ export function createRenderer(canvas, world) {
 
     const step = Math.max(2, Math.ceil(width / rayCount));
     const hits = [];
+    const now = performance.now();
+    const objectStyle = object => {
+      const remaining = (object.flashUntil ?? 0) - now;
+      if (remaining > 0) {
+        const progress = Math.max(0, Math.min(1, 1 - remaining / 1100));
+        const glow = Math.sin(progress * Math.PI);
+        return { color: `rgba(221,255,245,${.35 + glow * .65})`, width: 1.5 + glow * 1.5 };
+      }
+      return object.paired
+        ? { color: 'rgba(147,235,255,.9)', width: 2 }
+        : { color: 'rgba(114,255,208,.72)', width: 1.5 };
+    };
     const visibleDoors = new Map();
     context.lineWidth = 1;
     context.strokeStyle = 'rgba(112,169,160,.18)';
@@ -215,7 +227,10 @@ export function createRenderer(canvas, world) {
     }
     context.strokeStyle = 'rgba(114,255,208,.72)';
     context.lineWidth = 1.5;
-    function drawCuboid(box, ignoreWalls = false) {
+    function drawCuboid(box, ignoreWalls = false, style = null) {
+      const lineStyle = style ?? { color: 'rgba(114,255,208,.72)', width: 1.5 };
+      context.strokeStyle = lineStyle.color;
+      context.lineWidth = lineStyle.width;
       const baseZ = box.z ?? 0;
       const corners = [];
       for (const z of [baseZ, baseZ + box.h]) {
@@ -247,8 +262,11 @@ export function createRenderer(canvas, world) {
         context.stroke();
       }
     }
-    function drawCat(cat, ignoreWalls = false) {
-      for (const part of cat.cuboids) drawCuboid(part, ignoreWalls);
+    function drawWireObject(cat, ignoreWalls = false, style = null) {
+      const lineStyle = style ?? { color: 'rgba(114,255,208,.72)', width: 1.5 };
+      for (const part of cat.cuboids ?? []) drawCuboid(part, ignoreWalls, lineStyle);
+      context.strokeStyle = lineStyle.color;
+      context.lineWidth = lineStyle.width;
       for (const line of cat.lines) {
         for (let segment = 0; segment < line.length - 1; segment++) {
           const start = line[segment];
@@ -276,10 +294,14 @@ export function createRenderer(canvas, world) {
         }
       }
     }
-    for (const box of world.boxes) if (!box.held) drawCuboid(box);
-    for (const table of world.tables) if (!table.held) for (const part of table.parts) drawCuboid(part);
-    if (world.cat && !world.cat.held) drawCat(world.cat);
+    for (const box of world.boxes) if (!box.held) drawCuboid(box, false, objectStyle(box));
+    for (const table of world.tables) if (!table.held) for (const part of table.parts) drawCuboid(part, false, objectStyle(table));
+    if (world.cat && !world.cat.held) drawWireObject(world.cat, false, objectStyle(world.cat));
+    for (const guitar of world.guitars) if (!guitar.held) drawWireObject(guitar, false, objectStyle(guitar));
     for (const picture of world.pictures) {
+      const lineStyle = objectStyle(picture);
+      context.strokeStyle = lineStyle.color;
+      context.lineWidth = lineStyle.width;
       for (const line of picture.lines) {
         for (let segment = 0; segment < line.length - 1; segment++) {
           const start = line[segment];

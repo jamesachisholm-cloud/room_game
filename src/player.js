@@ -1,7 +1,7 @@
-import { CELL_FT } from './world.js?v=20261026';
+import { CELL_FT } from './world.js?v=20261030';
 
 export function createPlayer(start) {
-  return { ...start, inventory: Array(10).fill(null), selectedInventorySlot: 0 };
+  return { ...start, credits: 0, creditFlashId: 0, inventory: Array(10).fill(null), selectedInventorySlot: 0 };
 }
 
 export function attachPlayerControls(player, canvas, world) {
@@ -50,10 +50,24 @@ export function attachPlayerControls(player, canvas, world) {
       setMessage('No object close enough to pick up');
       return;
     }
+    let pickupMessage = `Picked up ${objectName(object)} · slot ${slot === 9 ? 0 : slot + 1}`;
+    if (object.paired) {
+      const picture = object.pairedPicture;
+      player.credits -= object.value;
+      player.creditFlashId += 1;
+      object.paired = false;
+      object.pairedPicture = null;
+      object.flashUntil = performance.now() + 700;
+      if (picture) {
+        picture.paired = world.pickups.some(candidate => candidate !== object && candidate.pairedPicture === picture);
+        picture.flashUntil = object.flashUntil;
+      }
+      pickupMessage = `Picked up ${objectName(object)} · −${object.value} credits · balance ${player.credits}`;
+    }
     object.held = true;
     player.inventory[slot] = object;
     player.selectedInventorySlot = slot;
-    setMessage(`Picked up ${objectName(object)} · slot ${slot === 9 ? 0 : slot + 1}`);
+    setMessage(pickupMessage);
   }
 
   function canDropAt(object, x, y) {
@@ -74,10 +88,33 @@ export function attachPlayerControls(player, canvas, world) {
       return;
     }
     const distances = [1.25, 1, .75, 1.5, 1.75, 2, 2.25, 2.5];
+    const matchingPicture = {
+      box: 'box', cat: 'cat', table: 'coffee-table', guitar: 'guitar'
+    }[object.type];
     for (const distance of distances) {
       const x = player.x + Math.cos(player.a) * distance;
       const y = player.y + Math.sin(player.a) * distance;
       if (!canDropAt(object, x, y)) continue;
+      const room = world.getRoomAt(x, y);
+      const salePicture = room && world.pictures.find(picture =>
+        picture.building === room.building && picture.room === room.room && picture.subject === matchingPicture
+      );
+      if (salePicture) {
+        world.moveObject(object, x, y);
+        object.held = false;
+        object.paired = true;
+        object.pairedPicture = salePicture;
+        object.flashUntil = performance.now() + 1100;
+        salePicture.paired = true;
+        salePicture.flashUntil = object.flashUntil;
+        player.credits += object.value;
+        player.creditFlashId += 1;
+        player.inventory[slot] = null;
+        const nextSlot = player.inventory.findIndex(item => item !== null);
+        if (nextSlot >= 0) player.selectedInventorySlot = nextSlot;
+        setMessage(`Paired ${objectName(object)} · +${object.value} credits · balance ${player.credits}`);
+        return;
+      }
       world.moveObject(object, x, y);
       object.held = false;
       player.inventory[slot] = null;
