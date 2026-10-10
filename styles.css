@@ -62,15 +62,20 @@ button { cursor:pointer; color:#07100f; background:var(--glow); border:0; paddin
   #inventory { top:8px; right:8px; width:150px; padding:6px; font-size:11px; pointer-events:auto; touch-action:none; }
   .inventory-slot { padding:5px; }
   #help { bottom:6px; max-width:36vw; white-space:normal; text-align:center; font-size:11px; padding:5px 8px; }
-  #map-link { right:8px; bottom:112px; padding:5px 8px; font-size:11px; }
+  #map-link { left:8px; right:auto; bottom:112px; padding:5px 8px; font-size:11px; }
   #crosshair { display:none; }
   #touch-controls { display:block; position:fixed; inset:0; pointer-events:none; }
   #touch-controls > * { pointer-events:auto; touch-action:none; -webkit-user-select:none; user-select:none; }
-  #joystick { position:absolute; left:calc(28px + env(safe-area-inset-left)); bottom:28px; width:130px; height:130px; border-radius:50%; border:1px solid #72ffd066; background:#07100f66; }
-  #joystick-knob { position:absolute; left:50%; top:50%; width:52px; height:52px; margin:-26px 0 0 -26px; border-radius:50%; border:1px solid #72ffd0aa; background:#72ffd033; }
+  #dpad { position:absolute; right:calc(20px + env(safe-area-inset-right)); bottom:20px; display:grid; grid-template:repeat(3,54px) / repeat(3,54px); gap:4px; }
+  .dpad-button { border-radius:12px; border:1px solid #72ffd0aa; background:#07100fa6; color:var(--glow); font-size:20px; padding:0; touch-action:none; }
+  .dpad-button.pressed { background:#72ffd044; }
+  .dpad-up { grid-area:1 / 2; }
+  .dpad-left { grid-area:2 / 1; }
+  .dpad-right { grid-area:2 / 3; }
+  .dpad-down { grid-area:3 / 2; }
   .touch-button { position:absolute; bottom:34px; width:68px; height:68px; padding:0; border-radius:50%; border:1px solid #72ffd0aa; background:#07100fa6; color:var(--glow); font-size:11px; letter-spacing:.04em; }
-  #touch-pick { right:calc(112px + env(safe-area-inset-right)); }
-  #touch-drop { right:calc(28px + env(safe-area-inset-right)); }
+  #touch-pick { left:calc(28px + env(safe-area-inset-left)); }
+  #touch-drop { left:calc(112px + env(safe-area-inset-left)); }
 }
 @media (pointer: coarse) and (orientation: portrait) {
   #rotate { display:grid; position:fixed; inset:0; z-index:10; place-items:center; padding:30px; text-align:center; background:#06100e; color:var(--glow); font-size:16px; }

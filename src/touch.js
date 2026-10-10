@@ -1,13 +1,43 @@
-export function setupTouchControls(canvas, controls) {
+export function setupTouchControls(controls) {
   if (!matchMedia('(pointer: coarse)').matches) return;
 
   const root = document.createElement('div');
   root.id = 'touch-controls';
-  const stick = document.createElement('div');
-  stick.id = 'joystick';
-  const knob = document.createElement('div');
-  knob.id = 'joystick-knob';
-  stick.append(knob);
+  const dpad = document.createElement('div');
+  dpad.id = 'dpad';
+  const held = { up: false, down: false, left: false, right: false };
+  const applyHeld = () => {
+    controls.setTouchMove(0, (held.up ? 1 : 0) - (held.down ? 1 : 0));
+    controls.setTouchTurn((held.right ? 1 : 0) - (held.left ? 1 : 0));
+  };
+  const makeDpadButton = (direction, label) => {
+    const button = document.createElement('button');
+    button.className = `dpad-button dpad-${direction}`;
+    button.textContent = label;
+    const release = () => {
+      if (!held[direction]) return;
+      held[direction] = false;
+      button.classList.remove('pressed');
+      applyHeld();
+    };
+    button.addEventListener('pointerdown', event => {
+      event.preventDefault();
+      button.setPointerCapture(event.pointerId);
+      held[direction] = true;
+      button.classList.add('pressed');
+      applyHeld();
+    });
+    button.addEventListener('pointerup', release);
+    button.addEventListener('pointercancel', release);
+    button.addEventListener('lostpointercapture', release);
+    return button;
+  };
+  dpad.append(
+    makeDpadButton('up', '\u25b2'),
+    makeDpadButton('left', '\u25c0'),
+    makeDpadButton('right', '\u25b6'),
+    makeDpadButton('down', '\u25bc')
+  );
   const makeButton = (id, label) => {
     const button = document.createElement('button');
     button.id = id;
@@ -17,64 +47,8 @@ export function setupTouchControls(canvas, controls) {
   };
   const pickUp = makeButton('touch-pick', 'PICK UP');
   const drop = makeButton('touch-drop', 'DROP');
-  root.append(stick, pickUp, drop);
+  root.append(dpad, pickUp, drop);
   document.body.append(root);
-
-  const stickRadius = 45;
-  const deadZone = .15;
-  let stickPointer = null;
-  function moveStick(event) {
-    const rect = stick.getBoundingClientRect();
-    let dx = event.clientX - (rect.left + rect.width / 2);
-    let dy = event.clientY - (rect.top + rect.height / 2);
-    const length = Math.hypot(dx, dy);
-    if (length > stickRadius) {
-      dx = dx / length * stickRadius;
-      dy = dy / length * stickRadius;
-    }
-    knob.style.transform = `translate(${dx}px, ${dy}px)`;
-    const x = dx / stickRadius;
-    const y = -dy / stickRadius;
-    if (Math.hypot(x, y) < deadZone) controls.setTouchMove(0, 0);
-    else controls.setTouchMove(x, y);
-  }
-  function releaseStick(event) {
-    if (event.pointerId !== stickPointer) return;
-    stickPointer = null;
-    knob.style.transform = '';
-    controls.setTouchMove(0, 0);
-  }
-  stick.addEventListener('pointerdown', event => {
-    if (stickPointer !== null) return;
-    stickPointer = event.pointerId;
-    stick.setPointerCapture(event.pointerId);
-    moveStick(event);
-  });
-  stick.addEventListener('pointermove', event => {
-    if (event.pointerId === stickPointer) moveStick(event);
-  });
-  stick.addEventListener('pointerup', releaseStick);
-  stick.addEventListener('pointercancel', releaseStick);
-
-  // Dragging anywhere else on the view turns the player.
-  let lookPointer = null;
-  let lastX = 0;
-  canvas.addEventListener('pointerdown', event => {
-    if (event.pointerType === 'mouse' || lookPointer !== null) return;
-    lookPointer = event.pointerId;
-    lastX = event.clientX;
-    canvas.setPointerCapture(event.pointerId);
-  });
-  canvas.addEventListener('pointermove', event => {
-    if (event.pointerId !== lookPointer) return;
-    controls.turnBy((event.clientX - lastX) * .006);
-    lastX = event.clientX;
-  });
-  const endLook = event => {
-    if (event.pointerId === lookPointer) lookPointer = null;
-  };
-  canvas.addEventListener('pointerup', endLook);
-  canvas.addEventListener('pointercancel', endLook);
 
   pickUp.addEventListener('pointerdown', event => {
     event.preventDefault();

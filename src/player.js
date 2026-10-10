@@ -10,6 +10,7 @@ export function attachPlayerControls(player, canvas, world) {
   const keysDown = new Set();
   const movementKeys = ['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'];
   const touchMove = { x: 0, y: 0 };
+  let touchTurn = 0;
 
   function setMessage(message) {
     player.actionMessage = message;
@@ -206,7 +207,7 @@ export function attachPlayerControls(player, canvas, world) {
       player.actionMessageTimer = Math.max(0, (player.actionMessageTimer ?? 0) - dt);
       player.teleportFlash = Math.max(0, (player.teleportFlash ?? 0) - dt);
       const turn = (keysDown.has('arrowright') ? 1 : 0) - (keysDown.has('arrowleft') ? 1 : 0);
-      player.a += turn * dt * 2.1;
+      player.a += (turn + touchTurn) * dt * 2.1;
       let forward = (keysDown.has('w') || keysDown.has('arrowup') ? 1 : 0) - (keysDown.has('s') || keysDown.has('arrowdown') ? 1 : 0) + touchMove.y;
       let side = (keysDown.has('d') ? 1 : 0) - (keysDown.has('a') ? 1 : 0) + touchMove.x;
       const magnitude = Math.max(1, Math.hypot(forward, side));
@@ -227,8 +228,8 @@ export function attachPlayerControls(player, canvas, world) {
       touchMove.x = x;
       touchMove.y = y;
     },
-    turnBy(radians) {
-      player.a += radians;
+    setTouchTurn(direction) {
+      touchTurn = direction;
     }
   };
 }
