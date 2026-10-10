@@ -11,7 +11,8 @@ export const OBJECT_METADATA = {
   toycar: { defaultValue: 8, name: 'toy car', inventoryName: 'toy car', pictureSubject: 'toycar', mapMarker: 'C' },
   dog: { defaultValue: 25, name: 'dog', inventoryName: 'dog', pictureSubject: 'dog', mapMarker: 'D' },
   penny: { defaultValue: 1, name: 'penny', inventoryName: 'penny', pictureSubject: 'penny', mapMarker: '\u00a2' },
-  fish: { defaultValue: 18, name: 'fish', inventoryName: 'fish', pictureSubject: 'fish', mapMarker: 'F' }
+  fish: { defaultValue: 18, name: 'fish', inventoryName: 'fish', pictureSubject: 'fish', mapMarker: 'F' },
+  plant: { defaultValue: 12, name: 'plant', inventoryName: 'plant', pictureSubject: 'plant', mapMarker: 'P' }
 };
 
-export const SIMPLE_OBJECT_TYPES = ['h', 'snake', 'apple', 'telephone', 'glasses', 'toycar', 'dog', 'penny', 'fish'];
+export const SIMPLE_OBJECT_TYPES = ['h', 'snake', 'apple', 'telephone', 'glasses', 'toycar', 'dog', 'penny', 'fish', 'plant'];

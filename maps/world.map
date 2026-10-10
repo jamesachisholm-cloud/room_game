@@ -2,7 +2,7 @@
 # Repeated room IDs join bays into one room. Door offsets are 0-based from the bay edge.
 # Doorway format: door <room-ID> <room-ID> <offset> [width]. Offsets are 0-based; width defaults to 1 map unit. If the rooms share separate wall segments, the door uses the first one found scanning from the northwest.
 # Exit format: exit <north|east|south|west> <room-ID> [wall-offset]. Without an offset, the exit is centered on that room's boundary; an explicit offset is measured from the west or north edge of the building.
-# Wall picture format: picture <box|cat|dog|guitar|coffee-table|h|snake|apple|telephone|glasses|penny|fish> <bay-col> <bay-row> <side> <offset> <bottom-z> <width> <height>.
+# Wall picture format: picture <box|cat|dog|guitar|coffee-table|h|snake|apple|telephone|glasses|penny|fish|plant> <bay-col> <bay-row> <side> <offset> <bottom-z> <width> <height>.
 # Magic door format: magicdoor <side> <room-ID> <pair-ID>.
 # Coffee table format: table <bay-col> <bay-row> <x> <y> <width> <depth> <height>.
 
@@ -98,6 +98,7 @@ picture cat 5 1 east 3.5 0.18 0.68 0.58
 picture apple 0 2 north 3.5 0.18 0.68 0.58
 dog 4 2 5.4 1.6 0.34 25
 picture penny 5 2 south 3.5 0.18 0.68 0.58
+picture plant 1 3 south 3.5 0.18 0.68 0.58
 end
 
 building D 6 4
@@ -130,6 +131,7 @@ telephone 2 0 5.4 1.6 0.34 30
 picture h 3 0 north 3.5 0.18 0.68 0.58
 picture glasses 4 0 north 5.5 0.18 0.68 0.58
 fish 0 1 5.4 5.4 0.34 18
+plant 4 1 5.4 1.6 0.4 12
 end
 
 building E 1 1
@@ -138,9 +140,6 @@ rooms
 doors
 exits
 exit north 01
-exit east 01
-exit south 01
-exit west 01
 magicdoors
 objects
 end
@@ -151,9 +150,6 @@ B south C north
 C west D east
 D north A south
 
-# Spokes from the central building meet each ring path at a T junction.
+# The central building's spoke meets a ring path at a T junction.
 paths
 path E north 22.5
-path E east 127.5
-path E south 130.5
-path E west 43.5

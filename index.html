@@ -4,12 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Room Lines</title>
-<link rel="stylesheet" href="styles.css?v=20261027">
+<link rel="stylesheet" href="styles.css?v=20261038">
 </head>
 <body>
 <canvas id="view" aria-label="Wireframe first person room exploration game"></canvas>
 <div id="hud"><div class="card">BUILDING <span id="building">A</span> · ROOM <span id="room">01</span> / <span id="room-count">11</span></div><div class="card" id="credits-card">CREDITS <span id="credits">0</span></div></div>
 <div id="crosshair"></div>
+<div id="compass" aria-label="Compass"><div id="compass-tape"></div></div>
 <div id="help">WASD move · mouse look · arrows turn · click to capture mouse</div>
 <aside id="inventory" aria-label="Inventory"><div class="inventory-heading"><span>INVENTORY</span><span id="inventory-count">0 / 10</span></div><ol id="inventory-slots"></ol></aside>
 <a id="map-link" href="map.html" target="_blank" rel="noopener">VIEW MAP</a>
@@ -31,6 +32,6 @@
     }
   }, 4000);
 </script>
-<script type="module" src="./src/main.js?v=20261037"></script>
+<script type="module" src="./src/main.js?v=20261038"></script>
 </body>
 </html>

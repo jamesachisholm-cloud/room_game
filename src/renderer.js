@@ -2,6 +2,14 @@ const PATH_HALF_WIDTH = .5;
 const WALL_HEIGHT = 1;
 const DOOR_HEIGHT = .8;
 const FOV = Math.PI / 3;
+const BUILDING_HUES = { A: 168, B: 190, C: 148, D: 208, E: 128 };
+// Map north is -y, so angles are measured from +x (east) towards +y (south).
+const MOONS = [
+  { angle: -Math.PI / 2, color: '#dfeaff', radius: .07, height: .62 },
+  { angle: 0, color: '#ffe9bd', radius: .055, height: .5 },
+  { angle: Math.PI / 2, color: '#ffd3df', radius: .085, height: .68 },
+  { angle: Math.PI, color: '#d4ffe6', radius: .045, height: .45 }
+];
 
 export function createRenderer(canvas, world) {
   const context = canvas.getContext('2d');
@@ -26,14 +34,37 @@ export function createRenderer(canvas, world) {
   function draw(player) {
     const horizon = height * .5;
     const focal = width / (2 * Math.tan(FOV / 2));
+    const playerBuilding = world.getRoomAt(player.x, player.y)?.building;
+    const indoorHue = BUILDING_HUES[playerBuilding];
     context.fillStyle = '#081412';
     context.fillRect(0, 0, width, height);
-    const sky = context.createLinearGradient(0, 0, 0, horizon);
-    sky.addColorStop(0, '#07100f');
-    sky.addColorStop(1, '#122422');
-    context.fillStyle = sky;
+    const outdoorSky = context.createLinearGradient(0, 0, 0, horizon);
+    if (indoorHue === undefined) {
+      outdoorSky.addColorStop(0, '#07100f');
+      outdoorSky.addColorStop(1, '#122422');
+    } else {
+      outdoorSky.addColorStop(0, `hsl(${indoorHue},30%,8%)`);
+      outdoorSky.addColorStop(1, `hsl(${indoorHue},32%,12%)`);
+    }
+    context.fillStyle = outdoorSky;
     context.fillRect(0, 0, width, horizon);
-    context.fillStyle = '#101d1a';
+    for (const moon of indoorHue === undefined ? MOONS : []) {
+      const offset = Math.atan2(Math.sin(moon.angle - player.a), Math.cos(moon.angle - player.a));
+      if (Math.abs(offset) > FOV / 2 + .3) continue;
+      const moonX = width / 2 + focal * Math.tan(offset);
+      const moonY = horizon * (1 - moon.height);
+      const moonRadius = height * moon.radius;
+      const glow = context.createRadialGradient(moonX, moonY, moonRadius * .8, moonX, moonY, moonRadius * 2.6);
+      glow.addColorStop(0, `${moon.color}55`);
+      glow.addColorStop(1, `${moon.color}00`);
+      context.fillStyle = glow;
+      context.fillRect(moonX - moonRadius * 2.6, moonY - moonRadius * 2.6, moonRadius * 5.2, moonRadius * 5.2);
+      context.fillStyle = moon.color;
+      context.beginPath();
+      context.arc(moonX, moonY, moonRadius, 0, Math.PI * 2);
+      context.fill();
+    }
+    context.fillStyle = indoorHue === undefined ? '#101d1a' : `hsl(${indoorHue},30%,11%)`;
     context.fillRect(0, horizon, width, height - horizon);
 
     const step = Math.max(2, Math.ceil(width / rayCount));
@@ -51,19 +82,16 @@ export function createRenderer(canvas, world) {
         : { color: 'rgba(114,255,208,.72)', width: 1.5 };
     };
     const visibleDoors = new Map();
-    const playerBuilding = world.getRoomAt(player.x, player.y)?.building;
+
     context.lineWidth = 1;
     context.strokeStyle = 'rgba(112,169,160,.18)';
-    for (let i = 1; i <= 12; i++) {
-      const y = horizon + (height - horizon) * (i / 13) ** 2;
+    context.beginPath();
+    for (let i = 1; i <= 12 && indoorHue === undefined; i++) {
       const ceilingY = horizon - horizon * (i / 13) ** 2;
-      context.beginPath();
-      context.moveTo(0, y);
-      context.lineTo(width, y);
       context.moveTo(0, ceilingY);
       context.lineTo(width, ceilingY);
-      context.stroke();
     }
+    context.stroke();
 
     for (let sx = 0; sx < width; sx += step) {
       const rayAngle = player.a + Math.atan((sx - width / 2) / focal);
@@ -150,7 +178,9 @@ export function createRenderer(canvas, world) {
       const top = horizon - wallHeight / 2;
       const bottom = horizon + wallHeight / 2;
       const alpha = Math.max(.13, .72 - distance * .0012 - (side ? .16 : 0));
-      context.strokeStyle = `rgba(126,220,199,${alpha})`;
+      const hitBuilding = world.buildings.find(b => hitX >= b.x && hitX < b.x + b.w && hitY >= b.y && hitY < b.y + b.h);
+      const hue = BUILDING_HUES[hitBuilding?.name] ?? 168;
+      context.strokeStyle = `hsla(${hue},55%,68%,${alpha})`;
       context.lineWidth = 1;
       if (doorPanel) {
         const panelHeight = Math.min(wallHeight, focal * DOOR_HEIGHT / distance);
@@ -163,7 +193,7 @@ export function createRenderer(canvas, world) {
         context.lineTo(sx, bottom);
         context.stroke();
       } else {
-        context.fillStyle = side ? '#0b1916' : '#0e1c19';
+        context.fillStyle = `hsl(${hue},40%,10%)`;
         context.fillRect(sx, top, step + 1, wallHeight);
         context.beginPath();
         context.moveTo(sx, top);

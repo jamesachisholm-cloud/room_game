@@ -1,8 +1,8 @@
-import { SIZE } from './world-constants.js?v=20261037';
-import { OBJECT_METADATA, SIMPLE_OBJECT_TYPES } from './object-types.js?v=20261037';
+import { SIZE } from './world-constants.js?v=20261038';
+import { OBJECT_METADATA, SIMPLE_OBJECT_TYPES } from './object-types.js?v=20261038';
 
 export async function loadPlan() {
-  const response = await fetch('./maps/world.map?v=20261037', { cache: 'no-store' });
+  const response = await fetch('./maps/world.map?v=20261038', { cache: 'no-store' });
   if (!response.ok) throw new Error(`Could not load maps/world.map (${response.status})`);
   return parsePlan(await response.text());
 }

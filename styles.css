@@ -17,6 +17,12 @@ button { cursor:pointer; color:#07100f; background:var(--glow); border:0; paddin
 #crosshair:before { left:5px; top:0; width:1px; height:12px }
 #crosshair:after { top:5px; left:0; width:12px; height:1px }
 
+#compass { position:fixed; top:18px; left:50%; width:260px; height:34px; transform:translateX(-50%); overflow:hidden; pointer-events:none; border:1px solid #70a9a066; background:#07100fb8; text-shadow:0 2px 8px #000; -webkit-mask-image:linear-gradient(90deg,transparent,#000 18%,#000 82%,transparent); mask-image:linear-gradient(90deg,transparent,#000 18%,#000 82%,transparent); }
+#compass:after { content:""; position:absolute; left:50%; bottom:0; width:2px; height:8px; margin-left:-1px; background:var(--glow); }
+#compass-tape { position:absolute; top:0; left:0; height:100%; will-change:transform; }
+.compass-mark { position:absolute; top:0; width:30px; margin-left:-15px; height:100%; line-height:26px; color:var(--dim); font-size:11px; text-align:center; white-space:nowrap; }
+.compass-mark:before { content:""; position:absolute; left:50%; bottom:0; width:1px; height:6px; background:#70a9a088; }
+.compass-mark.cardinal { color:var(--glow); font-size:15px; font-weight:bold; }
 #map-link { position:fixed; right:20px; bottom:18px; color:var(--glow); background:#07100fba; border:1px solid #70a9a044; padding:8px 12px; text-decoration:none; letter-spacing:.08em; }
 #map-link:hover { background:#102421; }
 

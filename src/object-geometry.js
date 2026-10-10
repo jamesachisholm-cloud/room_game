@@ -1,4 +1,4 @@
-import { SIZE } from './world-constants.js?v=20261037';
+import { SIZE } from './world-constants.js?v=20261038';
 
 export function makeCat(x, y, scale) {
   const cat = {
@@ -130,6 +130,15 @@ export function makeSimpleObject(type, x, y, scale) {
     }
     addLine([-.24, -.145, .42], [-.17, -.145, .52], [.04, -.145, .52], [.18, -.145, .42]);
     addLine([-.24, .145, .42], [-.17, .145, .52], [.04, .145, .52], [.18, .145, .42]);
+  } else if (type === 'plant') {
+    for (const py of [-.1, .1]) addLine([-.22, py, .04], [.22, py, .04], [.28, py, .34], [-.28, py, .34], [-.22, py, .04]);
+    for (const [px, z] of [[-.22, .04], [.22, .04], [.28, .34], [-.28, .34]]) addLine([px, -.1, z], [px, .1, z]);
+    addLine([0, 0, .34], [0, 0, .7]);
+    addLine([0, 0, .5], [-.22, 0, .66]);
+    addLine([0, 0, .5], [.22, 0, .66]);
+    addLine([0, 0, .62], [-.09, 0, .8], [0, 0, 1], [.09, 0, .8], [0, 0, .62]);
+    addLine([-.1, 0, .55], [-.36, 0, .62], [-.42, 0, .84], [-.2, 0, .76], [-.1, 0, .55]);
+    addLine([.1, 0, .55], [.36, 0, .62], [.42, 0, .84], [.2, 0, .76], [.1, 0, .55]);
   } else {
     throw new Error(`Unsupported object type: ${type}`);
   }
@@ -262,6 +271,12 @@ export function makeWallPicture(building, object) {
     addLine([-.02 * scale, artworkY(.31)], [.06 * scale, artworkY(.15)], [.14 * scale, artworkY(.33)]);
     addLine([.2 * scale, artworkY(.56)], [.08 * scale, artworkY(.52)], [.19 * scale, artworkY(.48)]);
     addLine([.19 * scale, artworkY(.61)], [.21 * scale, artworkY(.61)]);
+  } else if (object.subject === 'plant') {
+    addLine([-.14 * scale, artworkY(.18)], [.14 * scale, artworkY(.18)], [.18 * scale, artworkY(.38)], [-.18 * scale, artworkY(.38)], [-.14 * scale, artworkY(.18)]);
+    addLine([0, artworkY(.38)], [0, artworkY(.62)]);
+    addLine([0, artworkY(.58)], [-.06 * scale, artworkY(.74)], [0, artworkY(.94)], [.06 * scale, artworkY(.74)], [0, artworkY(.58)]);
+    addLine([-.02 * scale, artworkY(.5)], [-.2 * scale, artworkY(.56)], [-.26 * scale, artworkY(.76)], [-.1 * scale, artworkY(.68)], [-.02 * scale, artworkY(.5)]);
+    addLine([.02 * scale, artworkY(.5)], [.2 * scale, artworkY(.56)], [.26 * scale, artworkY(.76)], [.1 * scale, artworkY(.68)], [.02 * scale, artworkY(.5)]);
   } else {
     throw new Error(`Unsupported wall picture subject: ${object.subject}`);
   }

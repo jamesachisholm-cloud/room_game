@@ -1,6 +1,6 @@
-import { CELL_FT } from './world.js?v=20261037';
-import { OBJECT_METADATA } from './object-types.js?v=20261037';
-import { hasClearFootprint } from './placement.js?v=20261037';
+import { CELL_FT } from './world.js?v=20261038';
+import { OBJECT_METADATA } from './object-types.js?v=20261038';
+import { hasClearFootprint } from './placement.js?v=20261038';
 
 export function createPlayer(start) {
   return { ...start, credits: 0, creditFlashId: 0, inventory: Array(10).fill(null), selectedInventorySlot: 0 };
