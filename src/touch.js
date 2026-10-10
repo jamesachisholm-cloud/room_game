@@ -3,41 +3,57 @@ export function setupTouchControls(controls) {
 
   const root = document.createElement('div');
   root.id = 'touch-controls';
-  const dpad = document.createElement('div');
-  dpad.id = 'dpad';
-  const held = { up: false, down: false, left: false, right: false };
-  const applyHeld = () => {
-    controls.setTouchMove(0, (held.up ? 1 : 0) - (held.down ? 1 : 0));
-    controls.setTouchTurn((held.right ? 1 : 0) - (held.left ? 1 : 0));
+  const joystick = document.createElement('div');
+  joystick.id = 'joystick';
+  const knob = document.createElement('div');
+  knob.id = 'joystick-knob';
+  joystick.append(knob);
+
+  const DEADZONE = 0.12;
+  // Cubic-ish response: fine control near center, full speed at the rim.
+  const shape = value => {
+    const magnitude = Math.abs(value);
+    if (magnitude < DEADZONE) return 0;
+    const scaled = (magnitude - DEADZONE) / (1 - DEADZONE);
+    return Math.sign(value) * (0.6 * scaled + 0.4 * scaled * scaled);
   };
-  const makeDpadButton = (direction, label) => {
-    const button = document.createElement('button');
-    button.className = `dpad-button dpad-${direction}`;
-    button.textContent = label;
-    const release = () => {
-      if (!held[direction]) return;
-      held[direction] = false;
-      button.classList.remove('pressed');
-      applyHeld();
-    };
-    button.addEventListener('pointerdown', event => {
-      event.preventDefault();
-      button.setPointerCapture(event.pointerId);
-      held[direction] = true;
-      button.classList.add('pressed');
-      applyHeld();
-    });
-    button.addEventListener('pointerup', release);
-    button.addEventListener('pointercancel', release);
-    button.addEventListener('lostpointercapture', release);
-    return button;
+  let activePointer = null;
+  const update = event => {
+    const rect = joystick.getBoundingClientRect();
+    const radius = rect.width / 2;
+    let x = (event.clientX - rect.left - radius) / radius;
+    let y = (event.clientY - rect.top - radius) / radius;
+    const length = Math.hypot(x, y);
+    if (length > 1) {
+      x /= length;
+      y /= length;
+    }
+    knob.style.transform = `translate(${x * radius * 0.6}px, ${y * radius * 0.6}px)`;
+    controls.setTouchMove(0, shape(-y));
+    controls.setTouchTurn(shape(x));
   };
-  dpad.append(
-    makeDpadButton('up', '\u25b2'),
-    makeDpadButton('left', '\u25c0'),
-    makeDpadButton('right', '\u25b6'),
-    makeDpadButton('down', '\u25bc')
-  );
+  const release = event => {
+    if (event.pointerId !== activePointer) return;
+    activePointer = null;
+    knob.style.transform = '';
+    joystick.classList.remove('active');
+    controls.setTouchMove(0, 0);
+    controls.setTouchTurn(0);
+  };
+  joystick.addEventListener('pointerdown', event => {
+    if (activePointer !== null) return;
+    event.preventDefault();
+    activePointer = event.pointerId;
+    joystick.setPointerCapture(event.pointerId);
+    joystick.classList.add('active');
+    update(event);
+  });
+  joystick.addEventListener('pointermove', event => {
+    if (event.pointerId === activePointer) update(event);
+  });
+  joystick.addEventListener('pointerup', release);
+  joystick.addEventListener('pointercancel', release);
+  joystick.addEventListener('lostpointercapture', release);
   const makeButton = (id, label) => {
     const button = document.createElement('button');
     button.id = id;
@@ -47,7 +63,7 @@ export function setupTouchControls(controls) {
   };
   const pickUp = makeButton('touch-pick', 'PICK UP');
   const drop = makeButton('touch-drop', 'DROP');
-  root.append(dpad, pickUp, drop);
+  root.append(joystick, pickUp, drop);
   document.body.append(root);
 
   pickUp.addEventListener('pointerdown', event => {

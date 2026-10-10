@@ -4,7 +4,7 @@ import { createWorld } from './world.js?v=20261055';
 import { createPlayer, attachPlayerControls } from './player.js?v=20261060';
 import { createRenderer } from './renderer.js?v=20261059';
 import { setupHud } from './hud.js?v=20261060';
-import { setupTouchControls } from './touch.js?v=20261060';
+import { setupTouchControls } from './touch.js?v=20261062';
 
 async function startGame() {
   const canvas = document.querySelector('#view');
