@@ -75,3 +75,10 @@ button { cursor:pointer; color:#07100f; background:var(--glow); border:0; paddin
 @media (pointer: coarse) and (orientation: portrait) {
   #rotate { display:grid; position:fixed; inset:0; z-index:10; place-items:center; padding:30px; text-align:center; background:#06100e; color:var(--glow); font-size:16px; }
 }
+@media (max-height:520px) {
+  #intro section { max-width:min(640px,92vw); padding:12px 18px; touch-action:pan-y; }
+  #intro h1 { margin-bottom:4px; font-size:22px; }
+  #intro p { margin:4px 0 8px; font-size:11px; line-height:1.3; }
+  #intro button { padding:10px 22px; }
+  .touch-only { display:block; }
+}
