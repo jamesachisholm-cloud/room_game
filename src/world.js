@@ -1,13 +1,15 @@
-import { loadPlan, roomIdsIn } from './map-plan.js?v=20261038';
+import { loadPlan, roomIdsIn } from './map-plan.js?v=20261051';
 import { makeCat, makeGuitar, makeSimpleObject, makeWallPicture } from './object-geometry.js?v=20261038';
 import { SIMPLE_OBJECT_TYPES } from './object-types.js?v=20261038';
 import { SIZE } from './world-constants.js?v=20261038';
 
 export { CELL_FT, SIZE } from './world-constants.js?v=20261038';
-export { parsePlan } from './map-plan.js?v=20261038';
+export { parsePlan } from './map-plan.js?v=20261051';
 
 const PAD = 12;
 const ROOM_LENGTHS = 10;
+// Walking speed is about 3.1 cells per second, so 950 cells is roughly five minutes of walking.
+const FAR_DISTANCE = 950;
 export async function createWorld() {
   const plan = await loadPlan();
   const definitions = Object.fromEntries(plan.buildings.map(building => [building.name, building]));
@@ -16,13 +18,16 @@ export async function createWorld() {
   const C = definitions.C;
   const D = definitions.D;
   const E = definitions.E;
+  const F = definitions.F;
   const placed = {
     A: { ...A, x: PAD + SIZE, y: PAD },
     B: { ...B, x: 0, y: PAD },
     C: { ...C, x: 0, y: 0 },
     D: { ...D, x: 0, y: 0 },
     // The centre room sits between the four existing ring paths.
-    E: { ...E, x: 82, y: 73 }
+    E: { ...E, x: 82, y: 73 },
+    // Building F is placed very far from the ring, so the magic door is the practical way to reach it.
+    F: { ...F, x: 0, y: PAD }
   };
   for (const building of Object.values(placed)) {
     building.w = building.cols * SIZE;
@@ -33,7 +38,8 @@ export async function createWorld() {
   placed.C.y = placed.B.y + placed.B.h + ROOM_LENGTHS * SIZE;
   placed.D.x = placed.C.x - placed.C.w - ROOM_LENGTHS * SIZE;
   placed.D.y = placed.C.y;
-  const buildings = [placed.A, placed.B, placed.C, placed.D, placed.E];
+  placed.F.x = placed.B.x + placed.B.w + FAR_DISTANCE;
+  const buildings = [placed.A, placed.B, placed.C, placed.D, placed.E, placed.F];
   const roomCountByBuilding = new Map(buildings.map(building => [building.name, roomIdsIn(building.grid).length]));
   const width = Math.max(...buildings.map(building => building.x + building.w)) + PAD;
   const height = Math.max(...buildings.map(building => building.y + building.h)) + PAD;

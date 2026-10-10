@@ -2,7 +2,7 @@ const PATH_HALF_WIDTH = .5;
 const WALL_HEIGHT = 1;
 const DOOR_HEIGHT = WALL_HEIGHT;
 const FOV = Math.PI / 3;
-const BUILDING_HUES = { A: 168, B: 190, C: 148, D: 208, E: 128 };
+const BUILDING_HUES = { A: 168, B: 190, C: 148, D: 208, E: 128, F: 280 };
 // Map north is -y, so angles are measured from +x (east) towards +y (south).
 // Craters are [x, y, radius] in units of the moon's radius.
 const MOONS = [
@@ -227,7 +227,7 @@ export function createRenderer(canvas, world) {
       let magicDoorPanel = false;
       const rayDoors = [];
 
-      for (let i = 0; i < world.width + world.height; i++) {
+      for (let i = 0; i < Math.min(world.width + world.height, 400); i++) {
         if (sideX < sideY) {
           distance = sideX;
           sideX += deltaX;

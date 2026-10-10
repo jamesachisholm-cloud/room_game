@@ -141,6 +141,19 @@ doors
 exits
 exit north 01
 magicdoors
+magicdoor east 01 E-F
+objects
+end
+
+# Building F is a separate world: a single room reached only through E's magic door.
+building F 1 1
+rooms
+01
+doors
+exits
+exit south 01
+magicdoors
+magicdoor north 01 E-F
 objects
 end
 

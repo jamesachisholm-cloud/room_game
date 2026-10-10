@@ -109,7 +109,7 @@ export function parsePlan(text) {
     }
   }
 
-  if (buildings.length !== 5) throw new Error('The world map must define five buildings.');
+  if (buildings.length !== 6) throw new Error('The world map must define six buildings.');
   for (const building of buildings) {
     if (building.grid.length !== building.rows || building.grid.some(row => row.length !== building.cols)) {
       throw new Error(`Building ${building.name} must have ${building.rows} rows of ${building.cols} room IDs.`);

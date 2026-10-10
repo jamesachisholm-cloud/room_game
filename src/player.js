@@ -1,4 +1,4 @@
-import { CELL_FT } from './world.js?v=20261038';
+import { CELL_FT } from './world.js?v=20261053';
 import { OBJECT_METADATA } from './object-types.js?v=20261038';
 import { hasClearFootprint } from './placement.js?v=20261038';
 
