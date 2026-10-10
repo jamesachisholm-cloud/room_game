@@ -1,15 +1,51 @@
 const PATH_HALF_WIDTH = .5;
 const WALL_HEIGHT = 1;
-const DOOR_HEIGHT = .8;
+const DOOR_HEIGHT = WALL_HEIGHT;
 const FOV = Math.PI / 3;
 const BUILDING_HUES = { A: 168, B: 190, C: 148, D: 208, E: 128 };
 // Map north is -y, so angles are measured from +x (east) towards +y (south).
+// Craters are [x, y, radius] in units of the moon's radius.
 const MOONS = [
-  { angle: -Math.PI / 2, color: '#dfeaff', radius: .07, height: .62 },
-  { angle: 0, color: '#ffe9bd', radius: .055, height: .5 },
-  { angle: Math.PI / 2, color: '#ffd3df', radius: .085, height: .68 },
-  { angle: Math.PI, color: '#d4ffe6', radius: .045, height: .45 }
+  { angle: -Math.PI / 2, color: '#dfeaff', radius: .07, height: .62, craters: [[-.35, -.3, .22], [.3, .15, .16], [-.1, .5, .12], [.5, -.45, .1], [-.55, .25, .09]] },
+  { angle: 0, color: '#ffe9bd', radius: .055, height: .5, craters: [[.25, -.35, .2], [-.4, .1, .18], [.1, .45, .13], [-.15, -.55, .09]] },
+  { angle: Math.PI / 2, color: '#ffd3df', radius: .085, height: .68, craters: [[-.2, -.4, .25], [.4, .25, .2], [-.45, .35, .12], [.15, .6, .1], [.55, -.35, .09], [0, 0, .07]] },
+  { angle: Math.PI, color: '#d4ffe6', radius: .045, height: .45, craters: [[.3, .2, .24], [-.35, -.25, .17], [-.05, .55, .11]] }
 ];
+
+// Each cloud is a cluster of soft, flattened puffs at a fixed bearing and sky height.
+const CLOUDS = [[-2.9, .78, .9], [-2.1, .42, .7], [-1.2, .66, .8], [-.4, .3, .6], [.5, .72, .9], [1.3, .38, .7], [2.2, .6, .8]].map(([angle, height, span], seed) => ({
+  angle, height, span,
+  puffs: Array.from({ length: 8 }, (_, k) => ({
+    dx: k / 7 - .5 + Math.sin(seed * 3 + k * 2.1) * .05,
+    dy: Math.sin(seed * 5 + k * 1.7) * .012,
+    radius: .16 + .1 * Math.abs(Math.sin(seed * 2 + k * 1.3)),
+    alpha: .04 + .03 * Math.abs(Math.cos(seed * 4 + k * 2.2))
+  }))
+}));
+
+// Stars are fixed bearings and sky heights, generated from a seeded sequence so they never move.
+const STARS = (() => {
+  let seed = 20261044;
+  const random = () => {
+    seed = (seed + 0x6D2B79F5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  return Array.from({ length: 420 }, () => {
+    const roll = random();
+    // About one star in eight is bright, and another few are mid-brightness.
+    const bright = roll < .12;
+    return {
+      angle: random() * Math.PI * 2 - Math.PI,
+      height: .02 + random() * .96,
+      size: bright ? 2 : 1,
+      bright,
+      alpha: bright ? .8 + random() * .2 : roll < .35 ? .55 + random() * .3 : .22 + random() * .3,
+      phase: random() * Math.PI * 2
+    };
+  });
+})();
 
 export function createRenderer(canvas, world) {
   const context = canvas.getContext('2d');
@@ -35,37 +71,114 @@ export function createRenderer(canvas, world) {
     const horizon = height * .5;
     const focal = width / (2 * Math.tan(FOV / 2));
     const playerBuilding = world.getRoomAt(player.x, player.y)?.building;
-    const indoorHue = BUILDING_HUES[playerBuilding];
     context.fillStyle = '#081412';
     context.fillRect(0, 0, width, height);
     const outdoorSky = context.createLinearGradient(0, 0, 0, horizon);
-    if (indoorHue === undefined) {
-      outdoorSky.addColorStop(0, '#07100f');
-      outdoorSky.addColorStop(1, '#122422');
-    } else {
-      outdoorSky.addColorStop(0, `hsl(${indoorHue},30%,8%)`);
-      outdoorSky.addColorStop(1, `hsl(${indoorHue},32%,12%)`);
-    }
+    outdoorSky.addColorStop(0, '#0d1c1a');
+    outdoorSky.addColorStop(1, '#1c3835');
     context.fillStyle = outdoorSky;
     context.fillRect(0, 0, width, horizon);
-    for (const moon of indoorHue === undefined ? MOONS : []) {
+    {
+      const seconds = performance.now() / 1000;
+      context.fillStyle = '#e8f4ff';
+      for (const star of STARS) {
+        const offset = Math.atan2(Math.sin(star.angle - player.a), Math.cos(star.angle - player.a));
+        if (Math.abs(offset) > FOV / 2 + .05) continue;
+        const starX = width / 2 + focal * Math.tan(offset);
+        const starY = horizon * (1 - star.height);
+        const twinkle = .8 + .2 * Math.sin(seconds * 1.5 + star.phase);
+        if (star.bright) {
+          context.globalAlpha = star.alpha * twinkle * .18;
+          context.fillRect(starX - 1.5, starY - 1.5, star.size + 3, star.size + 3);
+        }
+        context.globalAlpha = star.alpha * twinkle;
+        context.fillRect(starX, starY, star.size, star.size);
+      }
+      context.globalAlpha = 1;
+    }
+    for (const moon of MOONS) {
       const offset = Math.atan2(Math.sin(moon.angle - player.a), Math.cos(moon.angle - player.a));
       if (Math.abs(offset) > FOV / 2 + .3) continue;
       const moonX = width / 2 + focal * Math.tan(offset);
       const moonY = horizon * (1 - moon.height);
       const moonRadius = height * moon.radius;
-      const glow = context.createRadialGradient(moonX, moonY, moonRadius * .8, moonX, moonY, moonRadius * 2.6);
-      glow.addColorStop(0, `${moon.color}55`);
+      context.globalAlpha = .78;
+      const glow = context.createRadialGradient(moonX, moonY, moonRadius * .6, moonX, moonY, moonRadius * 3.2);
+      glow.addColorStop(0, `${moon.color}44`);
+      glow.addColorStop(.3, `${moon.color}22`);
+      glow.addColorStop(.6, `${moon.color}0a`);
       glow.addColorStop(1, `${moon.color}00`);
       context.fillStyle = glow;
-      context.fillRect(moonX - moonRadius * 2.6, moonY - moonRadius * 2.6, moonRadius * 5.2, moonRadius * 5.2);
-      context.fillStyle = moon.color;
+      context.fillRect(moonX - moonRadius * 3.2, moonY - moonRadius * 3.2, moonRadius * 6.4, moonRadius * 6.4);
+      // The disc fades out over its outer edge so it melts into the sky.
+      const disc = context.createRadialGradient(moonX, moonY, moonRadius * .55, moonX, moonY, moonRadius * 1.14);
+      disc.addColorStop(0, moon.color);
+      disc.addColorStop(.6, `${moon.color}cc`);
+      disc.addColorStop(1, `${moon.color}00`);
+      context.fillStyle = disc;
       context.beginPath();
-      context.arc(moonX, moonY, moonRadius, 0, Math.PI * 2);
+      context.arc(moonX, moonY, moonRadius * 1.14, 0, Math.PI * 2);
       context.fill();
+      context.save();
+      context.beginPath();
+      context.arc(moonX, moonY, moonRadius * .9, 0, Math.PI * 2);
+      context.clip();
+      for (const [cx, cy, cr] of moon.craters) {
+        context.fillStyle = 'rgba(40,50,80,.09)';
+        context.beginPath();
+        context.arc(moonX + cx * moonRadius, moonY + cy * moonRadius, cr * moonRadius, 0, Math.PI * 2);
+        context.fill();
+        // Lit rim on the upper-left edge of each crater.
+        context.strokeStyle = 'rgba(255,255,255,.07)';
+        context.lineWidth = Math.max(.6, moonRadius * .02);
+        context.beginPath();
+        context.arc(moonX + cx * moonRadius, moonY + cy * moonRadius, cr * moonRadius, Math.PI * .75, Math.PI * 1.75);
+        context.stroke();
+      }
+      const shade = context.createRadialGradient(moonX - moonRadius * .3, moonY - moonRadius * .3, moonRadius * .3, moonX, moonY, moonRadius * .9);
+      shade.addColorStop(0, 'rgba(0,0,0,0)');
+      shade.addColorStop(1, 'rgba(10,20,40,.12)');
+      context.fillStyle = shade;
+      context.fillRect(moonX - moonRadius, moonY - moonRadius, moonRadius * 2, moonRadius * 2);
+      context.restore();
+      context.globalAlpha = 1;
     }
-    context.fillStyle = indoorHue === undefined ? '#101d1a' : `hsl(${indoorHue},30%,11%)`;
+    {
+      const drift = performance.now() * 8e-6;
+      for (const cloud of CLOUDS) {
+        const offset = Math.atan2(Math.sin(cloud.angle + drift - player.a), Math.cos(cloud.angle + drift - player.a));
+        if (Math.abs(offset) > FOV / 2 + cloud.span / 2) continue;
+        const cloudX = width / 2 + focal * Math.tan(offset);
+        const cloudY = horizon * (1 - cloud.height);
+        const spread = focal * cloud.span;
+        for (const puff of cloud.puffs) {
+          const puffRadius = spread * puff.radius;
+          context.save();
+          context.translate(cloudX + spread * puff.dx, cloudY + puff.dy * height);
+          context.scale(1, .3);
+          const body = context.createRadialGradient(0, 0, 0, 0, 0, puffRadius);
+          body.addColorStop(0, `rgba(205,230,235,${puff.alpha})`);
+          body.addColorStop(.25, `rgba(205,230,235,${puff.alpha * .8})`);
+          body.addColorStop(.5, `rgba(205,230,235,${puff.alpha * .45})`);
+          body.addColorStop(.75, `rgba(205,230,235,${puff.alpha * .15})`);
+          body.addColorStop(1, 'rgba(205,230,235,0)');
+          context.fillStyle = body;
+          context.fillRect(-puffRadius, -puffRadius, puffRadius * 2, puffRadius * 2);
+          context.restore();
+        }
+      }
+    }
+    context.fillStyle = '#101d1a';
     context.fillRect(0, horizon, width, height - horizon);
+    // Roofs and floors are drawn per column, only where the ray passes through a building footprint.
+    const buildingFinishes = new Map();
+    for (const building of world.buildings) {
+      const hue = BUILDING_HUES[building.name] ?? 168;
+      const ceiling = context.createLinearGradient(0, 0, 0, horizon);
+      ceiling.addColorStop(0, `hsl(${hue},30%,11%)`);
+      ceiling.addColorStop(1, `hsl(${hue},32%,16%)`);
+      buildingFinishes.set(building.name, { ceiling, floor: `hsl(${hue},30%,14%)` });
+    }
 
     const step = Math.max(2, Math.ceil(width / rayCount));
     const hits = [];
@@ -86,7 +199,7 @@ export function createRenderer(canvas, world) {
     context.lineWidth = 1;
     context.strokeStyle = 'rgba(112,169,160,.18)';
     context.beginPath();
-    for (let i = 1; i <= 12 && indoorHue === undefined; i++) {
+    for (let i = 1; i <= 12; i++) {
       const ceilingY = horizon - horizon * (i / 13) ** 2;
       context.moveTo(0, ceilingY);
       context.lineTo(width, ceilingY);
@@ -172,6 +285,39 @@ export function createRenderer(canvas, world) {
         }
       }
 
+      const cosDelta = Math.cos(rayAngle - player.a);
+      for (const building of world.buildings) {
+        let tMin = -Infinity;
+        let tMax = Infinity;
+        for (const [origin, direction, low, size] of [[player.x, rayX, building.x, building.w], [player.y, rayY, building.y, building.h]]) {
+          if (Math.abs(direction) < 1e-9) {
+            if (origin < low || origin > low + size) tMax = -Infinity;
+          } else {
+            const a = (low - origin) / direction;
+            const b = (low + size - origin) / direction;
+            tMin = Math.max(tMin, Math.min(a, b));
+            tMax = Math.min(tMax, Math.max(a, b));
+          }
+        }
+        const enter = Math.max(tMin, 0);
+        if (tMax <= enter) continue;
+        const finishes = buildingFinishes.get(building.name);
+        const near = enter * cosDelta;
+        const far = tMax * cosDelta;
+        const roofTop = near < .01 ? 0 : Math.max(0, horizon - focal * WALL_HEIGHT / 2 / near);
+        const roofBottom = Math.min(horizon, horizon - focal * WALL_HEIGHT / 2 / far);
+        if (roofBottom > roofTop) {
+          context.fillStyle = finishes.ceiling;
+          context.fillRect(sx, roofTop, step + 1, roofBottom - roofTop);
+        }
+        const floorTop = Math.max(horizon, horizon + focal * WALL_HEIGHT / 2 / far);
+        const floorBottom = near < .01 ? height : Math.min(height, horizon + focal * WALL_HEIGHT / 2 / near);
+        if (floorBottom > floorTop) {
+          context.fillStyle = finishes.floor;
+          context.fillRect(sx, floorTop, step + 1, floorBottom - floorTop);
+        }
+      }
+
       hits.push({ sx, distance, hitX, hitY, side, wallHit });
       if (!wallHit) continue;
       const wallHeight = Math.min(height * 1.8, focal * WALL_HEIGHT / distance);
@@ -217,31 +363,67 @@ export function createRenderer(canvas, world) {
       context.strokeStyle = style.color;
       context.lineWidth = style.width;
       context.beginPath();
-      let active = false;
-      let lastPoint = null;
+      const cosA = Math.cos(player.a);
+      const sinA = Math.sin(player.a);
+      // Slightly beyond the .25 cutoff in projectPoint so clipped ends are never rejected.
+      const nearDepth = .26;
+      const edge = (width / 2 + 10) / focal;
+      const toCamera = point => {
+        const dx = point.x - player.x;
+        const dy = point.y - player.y;
+        return { depth: dx * cosA + dy * sinA, lateral: -dx * sinA + dy * cosA };
+      };
       for (let segment = 0; segment < points.length - 1; segment++) {
         const start = points[segment];
         const end = points[segment + 1];
-        for (let index = segment === 0 ? 0 : 1; index <= subdivisions; index++) {
-          const amount = index / subdivisions;
+        const a = toCamera(start);
+        const b = toCamera(end);
+        let t0 = 0;
+        let t1 = 1;
+        let inside = true;
+        // Clip against the near plane and both side edges of the screen so lines run right to the edge.
+        for (const [fa, fb] of [
+          [a.depth - nearDepth, b.depth - nearDepth],
+          [a.lateral + edge * a.depth, b.lateral + edge * b.depth],
+          [edge * a.depth - a.lateral, edge * b.depth - b.lateral]
+        ]) {
+          if (fa < 0 && fb < 0) { inside = false; break; }
+          if (fa < 0) t0 = Math.max(t0, fa / (fa - fb));
+          else if (fb < 0) t1 = Math.min(t1, fa / (fa - fb));
+        }
+        if (!inside || t0 >= t1) continue;
+        const startZ = start.z ?? 0;
+        const endZ = end.z ?? 0;
+        const screenAt = t => {
+          const depth = a.depth + (b.depth - a.depth) * t;
+          return {
+            sx: width / 2 + focal * (a.lateral + (b.lateral - a.lateral) * t) / depth,
+            sy: horizon + focal * (WALL_HEIGHT / 2 - (startZ + (endZ - startZ) * t)) / depth
+          };
+        };
+        const first = screenAt(t0);
+        const last = screenAt(t1);
+        // Sample about every 3px so occlusion by walls cuts the line close to where the wall begins.
+        const count = Math.min(400, Math.max(subdivisions, Math.ceil(Math.hypot(last.sx - first.sx, last.sy - first.sy) / 3)));
+        let active = false;
+        for (let index = 0; index <= count; index++) {
+          const t = t0 + (t1 - t0) * index / count;
           const point = projectPoint(
-            start.x + (end.x - start.x) * amount,
-            start.y + (end.y - start.y) * amount,
-            (start.z ?? 0) + ((end.z ?? 0) - (start.z ?? 0)) * amount,
+            start.x + (end.x - start.x) * t,
+            start.y + (end.y - start.y) * t,
+            startZ + (endZ - startZ) * t,
             ignoreWalls
           );
-          if (!point || !point.visible || point.sx < -10 || point.sx > width + 10) {
+          if (!point || !point.visible) {
             active = false;
-            lastPoint = null;
             continue;
           }
-          if (!active || Math.abs(point.sx - lastPoint.sx) >= width * .7) {
+          if (!active) {
             context.moveTo(point.sx, point.sy);
             active = true;
           } else {
             context.lineTo(point.sx, point.sy);
           }
-          lastPoint = point;
         }
       }
       context.stroke();
@@ -272,6 +454,21 @@ export function createRenderer(canvas, world) {
           points.push({ x, y, z: 0 });
         }
         drawProjectedPolyline(points, pathStyle, false, 1);
+      }
+    }
+    if (!playerBuilding) {
+      for (const building of world.buildings) {
+        const corners = [[building.x, building.y], [building.x + building.w, building.y], [building.x + building.w, building.y + building.h], [building.x, building.y + building.h]];
+        for (const z of [0, WALL_HEIGHT]) {
+          for (let index = 0; index < 4; index++) {
+            const [x1, y1] = corners[index];
+            const [x2, y2] = corners[(index + 1) % 4];
+            const count = Math.ceil(Math.hypot(x2 - x1, y2 - y1) / 4);
+            const points = Array.from({ length: count + 1 }, (_, step) => ({ x: x1 + (x2 - x1) * step / count, y: y1 + (y2 - y1) * step / count, z }));
+            drawProjectedPolyline(points, pathStyle, false, 1);
+          }
+        }
+        for (const [x, y] of corners) drawProjectedPolyline([{ x, y, z: 0 }, { x, y, z: WALL_HEIGHT }], pathStyle, false, 4);
       }
     }
     const objectLineStyle = { color: 'rgba(114,255,208,.72)', width: 1.5 };
