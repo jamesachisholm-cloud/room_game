@@ -1,59 +1,41 @@
-export function setupTouchControls(controls) {
+export function setupTouchControls(controls, canvas) {
   if (!matchMedia('(pointer: coarse)').matches) return;
 
   const root = document.createElement('div');
   root.id = 'touch-controls';
-  const joystick = document.createElement('div');
-  joystick.id = 'joystick';
-  const knob = document.createElement('div');
-  knob.id = 'joystick-knob';
-  joystick.append(knob);
 
-  const DEADZONE = 0.12;
-  // Cubic-ish response: fine control near center, full speed at the rim.
-  const shape = value => {
-    const magnitude = Math.abs(value);
-    if (magnitude < DEADZONE) return 0;
-    const scaled = (magnitude - DEADZONE) / (1 - DEADZONE);
-    return Math.sign(value) * (0.6 * scaled + 0.4 * scaled * scaled);
-  };
-  let activePointer = null;
-  const update = event => {
-    const rect = joystick.getBoundingClientRect();
-    const radius = rect.width / 2;
-    let x = (event.clientX - rect.left - radius) / radius;
-    let y = (event.clientY - rect.top - radius) / radius;
-    const length = Math.hypot(x, y);
-    if (length > 1) {
-      x /= length;
-      y /= length;
-    }
-    knob.style.transform = `translate(${x * radius * 0.6}px, ${y * radius * 0.6}px)`;
-    controls.setTouchMove(0, shape(-y));
-    controls.setTouchTurn(shape(x));
-  };
-  const release = event => {
-    if (event.pointerId !== activePointer) return;
-    activePointer = null;
-    knob.style.transform = '';
-    joystick.classList.remove('active');
-    controls.setTouchMove(0, 0);
-    controls.setTouchTurn(0);
-  };
-  joystick.addEventListener('pointerdown', event => {
-    if (activePointer !== null) return;
-    event.preventDefault();
-    activePointer = event.pointerId;
-    joystick.setPointerCapture(event.pointerId);
-    joystick.classList.add('active');
-    update(event);
+  const TAP_SLOP = 12;
+  const TAP_MS = 400;
+  const LOOK_RADIANS_PER_PX = 0.006;
+  let gesture = null;
+  canvas.style.touchAction = 'none';
+  canvas.addEventListener('pointerdown', event => {
+    if (gesture) return;
+    gesture = { id: event.pointerId, x: event.clientX, startX: event.clientX, startY: event.clientY, time: performance.now(), dragging: false };
+    canvas.setPointerCapture(event.pointerId);
   });
-  joystick.addEventListener('pointermove', event => {
-    if (event.pointerId === activePointer) update(event);
+  canvas.addEventListener('pointermove', event => {
+    if (!gesture || event.pointerId !== gesture.id) return;
+    if (!gesture.dragging && Math.hypot(event.clientX - gesture.startX, event.clientY - gesture.startY) > TAP_SLOP) gesture.dragging = true;
+    if (!gesture.dragging) return;
+    controls.lookBy((event.clientX - gesture.x) * LOOK_RADIANS_PER_PX);
+    gesture.x = event.clientX;
   });
-  joystick.addEventListener('pointerup', release);
-  joystick.addEventListener('pointercancel', release);
-  joystick.addEventListener('lostpointercapture', release);
+  canvas.addEventListener('pointerup', event => {
+    if (!gesture || event.pointerId !== gesture.id) return;
+    const { dragging, time } = gesture;
+    gesture = null;
+    if (dragging || performance.now() - time > TAP_MS) return;
+    const rect = canvas.getBoundingClientRect();
+    controls.walkToScreenPoint(
+      (event.clientX - rect.left - rect.width / 2) / rect.width,
+      (event.clientY - rect.top - rect.height / 2) / rect.width
+    );
+  });
+  canvas.addEventListener('pointercancel', event => {
+    if (gesture && event.pointerId === gesture.id) gesture = null;
+  });
+
   const makeButton = (id, label) => {
     const button = document.createElement('button');
     button.id = id;
@@ -63,7 +45,7 @@ export function setupTouchControls(controls) {
   };
   const pickUp = makeButton('touch-pick', 'PICK UP');
   const drop = makeButton('touch-drop', 'DROP');
-  root.append(joystick, pickUp, drop);
+  root.append(pickUp, drop);
   document.body.append(root);
 
   pickUp.addEventListener('pointerdown', event => {

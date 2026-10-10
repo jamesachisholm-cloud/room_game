@@ -11,6 +11,8 @@ export function attachPlayerControls(player, canvas, world) {
   const movementKeys = ['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'];
   const touchMove = { x: 0, y: 0 };
   let touchTurn = 0;
+  let walkTarget = null;
+  const VIEW_FOV = Math.PI / 3; // must match renderer FOV
 
   function setMessage(message) {
     player.actionMessage = message;
@@ -214,12 +216,44 @@ export function attachPlayerControls(player, canvas, world) {
       forward /= magnitude;
       side /= magnitude;
       const speed = dt * (4.43 / CELL_FT);
-      const dx = (Math.cos(player.a) * forward - Math.sin(player.a) * side) * speed;
-      const dy = (Math.sin(player.a) * forward + Math.cos(player.a) * side) * speed;
+      let dx = (Math.cos(player.a) * forward - Math.sin(player.a) * side) * speed;
+      let dy = (Math.sin(player.a) * forward + Math.cos(player.a) * side) * speed;
+      if (walkTarget) {
+        const toX = walkTarget.x - player.x;
+        const toY = walkTarget.y - player.y;
+        const remaining = Math.hypot(toX, toY);
+        if (remaining < .08 || forward || side) {
+          walkTarget = null;
+        } else {
+          const step = Math.min(speed, remaining);
+          dx = toX / remaining * step;
+          dy = toY / remaining * step;
+        }
+      }
       const radius = .19;
+      const beforeX = player.x;
+      const beforeY = player.y;
       if (!world.isWall(Math.floor(player.x + dx + Math.sign(dx) * radius), Math.floor(player.y))) player.x += dx;
       if (!world.isWall(Math.floor(player.x), Math.floor(player.y + dy + Math.sign(dy) * radius))) player.y += dy;
+      if (walkTarget && Math.hypot(player.x - beforeX, player.y - beforeY) < speed * .25) walkTarget = null;
       teleportAtMagicDoor();
+    },
+    walkToScreenPoint(offsetX, offsetY) {
+      // Offsets are from screen center, in canvas widths; the horizon is at mid-height.
+      const focal = 1 / (2 * Math.tan(VIEW_FOV / 2));
+      const angle = player.a + Math.atan(offsetX / focal);
+      const dirX = Math.cos(angle);
+      const dirY = Math.sin(angle);
+      let distance = 30;
+      if (offsetY > .005) distance = Math.min(distance, .5 * focal / offsetY * Math.hypot(1, offsetX / focal));
+      let reach = 0;
+      while (reach < distance && !world.isWall(Math.floor(player.x + dirX * (reach + .05)), Math.floor(player.y + dirY * (reach + .05)))) reach += .05;
+      reach = Math.min(reach, distance);
+      if (reach < distance) reach -= .3;
+      walkTarget = reach > .15 ? { x: player.x + dirX * reach, y: player.y + dirY * reach } : null;
+    },
+    lookBy(radians) {
+      player.a += radians;
     },
     pickUpObject,
     dropObject,
