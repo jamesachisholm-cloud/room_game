@@ -9,6 +9,7 @@ export function createPlayer(start) {
 export function attachPlayerControls(player, canvas, world) {
   const keysDown = new Set();
   const movementKeys = ['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'];
+  const touchMove = { x: 0, y: 0 };
 
   function setMessage(message) {
     player.actionMessage = message;
@@ -152,6 +153,12 @@ export function attachPlayerControls(player, canvas, world) {
     setMessage(`${tollMessage}Magic door · Building ${destination.building} Room ${destination.roomId}`);
   }
 
+  function selectSlot(slot) {
+    player.selectedInventorySlot = slot;
+    const object = player.inventory[slot];
+    setMessage(object ? `Selected ${objectName(object)} · G to drop` : `Inventory slot ${slot === 9 ? 0 : slot + 1} is empty`);
+  }
+
   function onKeyDown(event) {
     const key = (event.key ?? '').toLowerCase();
     if (!event.repeat && (key === 'e' || event.code === 'KeyE')) {
@@ -168,9 +175,7 @@ export function attachPlayerControls(player, canvas, world) {
     if (!event.repeat && digit !== null) {
       event.preventDefault();
       const slot = digit === '0' ? 9 : Number(digit) - 1;
-      player.selectedInventorySlot = slot;
-      const object = player.inventory[slot];
-      setMessage(object ? `Selected ${objectName(object)} · G to drop` : `Inventory slot ${digit} is empty`);
+      selectSlot(slot);
       return;
     }
     if (movementKeys.includes(key)) {
@@ -192,7 +197,9 @@ export function attachPlayerControls(player, canvas, world) {
   addEventListener('keyup', onKeyUp);
   document.addEventListener('mousemove', onMouseMove);
   addEventListener('keydown', onEscape);
-  canvas.addEventListener('click', () => canvas.requestPointerLock?.());
+  canvas.addEventListener('click', () => {
+    if (!matchMedia('(pointer: coarse)').matches) canvas.requestPointerLock?.();
+  });
 
   return {
     update(dt, world) {
@@ -200,9 +207,9 @@ export function attachPlayerControls(player, canvas, world) {
       player.teleportFlash = Math.max(0, (player.teleportFlash ?? 0) - dt);
       const turn = (keysDown.has('arrowright') ? 1 : 0) - (keysDown.has('arrowleft') ? 1 : 0);
       player.a += turn * dt * 2.1;
-      let forward = (keysDown.has('w') || keysDown.has('arrowup') ? 1 : 0) - (keysDown.has('s') || keysDown.has('arrowdown') ? 1 : 0);
-      let side = (keysDown.has('d') ? 1 : 0) - (keysDown.has('a') ? 1 : 0);
-      const magnitude = Math.hypot(forward, side) || 1;
+      let forward = (keysDown.has('w') || keysDown.has('arrowup') ? 1 : 0) - (keysDown.has('s') || keysDown.has('arrowdown') ? 1 : 0) + touchMove.y;
+      let side = (keysDown.has('d') ? 1 : 0) - (keysDown.has('a') ? 1 : 0) + touchMove.x;
+      const magnitude = Math.max(1, Math.hypot(forward, side));
       forward /= magnitude;
       side /= magnitude;
       const speed = dt * (4.43 / CELL_FT);
@@ -212,6 +219,16 @@ export function attachPlayerControls(player, canvas, world) {
       if (!world.isWall(Math.floor(player.x + dx + Math.sign(dx) * radius), Math.floor(player.y))) player.x += dx;
       if (!world.isWall(Math.floor(player.x), Math.floor(player.y + dy + Math.sign(dy) * radius))) player.y += dy;
       teleportAtMagicDoor();
+    },
+    pickUpObject,
+    dropObject,
+    selectSlot,
+    setTouchMove(x, y) {
+      touchMove.x = x;
+      touchMove.y = y;
+    },
+    turnBy(radians) {
+      player.a += radians;
     }
   };
 }

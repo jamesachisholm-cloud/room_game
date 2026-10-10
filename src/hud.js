@@ -2,9 +2,10 @@ import { OBJECT_METADATA } from './object-types.js?v=20261038';
 
 const COMPASS_LABELS = { 0: 'N', 45: 'NE', 90: 'E', 135: 'SE', 180: 'S', 225: 'SW', 270: 'W', 315: 'NW' };
 const COMPASS_PX_PER_DEGREE = 3;
-const COMPASS_WIDTH = 260;
 
-export function setupHud(canvas) {
+export function setupHud(canvas, controls) {
+  const touchMode = matchMedia('(pointer: coarse)').matches;
+  const compass = document.querySelector('#compass');
   const compassTape = document.querySelector('#compass-tape');
   // Three copies of the dial let the tape wrap smoothly across north.
   for (let degrees = -360; degrees < 720; degrees += 15) {
@@ -27,9 +28,13 @@ export function setupHud(canvas) {
   const inventoryCount = document.querySelector('#inventory-count');
   const inventorySlots = document.querySelector('#inventory-slots');
   const slotLabels = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
-  const slotElements = slotLabels.map(label => {
+  const slotElements = slotLabels.map((label, index) => {
     const slot = document.createElement('li');
     slot.className = 'inventory-slot';
+    slot.addEventListener('pointerdown', event => {
+      event.preventDefault();
+      controls.selectSlot(index);
+    });
     const number = document.createElement('span');
     number.className = 'inventory-key';
     number.textContent = label;
@@ -42,18 +47,25 @@ export function setupHud(canvas) {
 
   startButton.addEventListener('click', () => {
     intro.classList.add('hidden');
-    canvas.requestPointerLock?.();
+    if (touchMode) {
+      Promise.resolve(document.documentElement.requestFullscreen?.())
+        .then(() => screen.orientation?.lock?.('landscape'))
+        .catch(() => {});
+    } else {
+      canvas.requestPointerLock?.();
+    }
   });
 
   return {
     update(world, player) {
       // Map north is -y and player.a is measured from east, so north is a = -90°.
       const bearing = (((player.a * 180 / Math.PI + 90) % 360) + 360) % 360;
-      compassTape.style.transform = `translateX(${COMPASS_WIDTH / 2 - (bearing + 360) * COMPASS_PX_PER_DEGREE}px)`;
+      compassTape.style.transform = `translateX(${compass.clientWidth / 2 - (bearing + 360) * COMPASS_PX_PER_DEGREE}px)`;
       const room = world.getRoomAt(player.x, player.y);
+      const actionHint = touchMode ? 'PICK UP / DROP buttons' : 'E pick up · 1–9/0 select · G drop';
       const actionPrompt = player.actionMessageTimer > 0
-        ? `${player.actionMessage} · E pick up · 1–9/0 select · G drop`
-        : 'WASD move · mouse look · E pick up · 1–9/0 select · G drop';
+        ? `${player.actionMessage} · ${actionHint}`
+        : touchMode ? 'Joystick move · drag to look · PICK UP / DROP buttons' : 'WASD move · mouse look · E pick up · 1–9/0 select · G drop';
       const carriedCount = player.inventory.filter(Boolean).length;
       creditsLabel.textContent = String(player.credits);
       if (player.creditFlashId !== lastCreditFlashId) {
@@ -80,7 +92,7 @@ export function setupHud(canvas) {
         roomCount.textContent = '—';
         help.textContent = player.actionMessageTimer > 0
           ? actionPrompt
-          : 'OUTSIDE · follow paths · E pick up · 1–9/0 select · G drop';
+          : `OUTSIDE · follow paths · ${actionHint}`;
       }
     }
   };

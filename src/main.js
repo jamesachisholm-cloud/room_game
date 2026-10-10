@@ -1,9 +1,10 @@
 window.__roomLinesModuleLoaded = true;
 
 import { createWorld } from './world.js?v=20261055';
-import { createPlayer, attachPlayerControls } from './player.js?v=20261055';
-import { createRenderer } from './renderer.js?v=20261053';
-import { setupHud } from './hud.js?v=20261038';
+import { createPlayer, attachPlayerControls } from './player.js?v=20261056';
+import { createRenderer } from './renderer.js?v=20261056';
+import { setupHud } from './hud.js?v=20261056';
+import { setupTouchControls } from './touch.js?v=20261056';
 
 async function startGame() {
   const canvas = document.querySelector('#view');
@@ -11,7 +12,8 @@ async function startGame() {
   const player = createPlayer(world.start);
   const controls = attachPlayerControls(player, canvas, world);
   const renderer = createRenderer(canvas, world);
-  const hud = setupHud(canvas);
+  const hud = setupHud(canvas, controls);
+  setupTouchControls(canvas, controls);
   let previousFrame = 0;
 
   function frame(timestamp) {

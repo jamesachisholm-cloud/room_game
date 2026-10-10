@@ -1,4 +1,6 @@
 const PATH_HALF_WIDTH = .5;
+// Phones render at a lower resolution and sample fewer rays and line points.
+const COARSE_POINTER = matchMedia('(pointer: coarse)').matches;
 const WALL_HEIGHT = 1;
 const DOOR_HEIGHT = WALL_HEIGHT;
 const FOV = Math.PI / 3;
@@ -56,10 +58,10 @@ export function createRenderer(canvas, world) {
   let rayCount = 600;
 
   function resize() {
-    pixelRatio = Math.min(devicePixelRatio || 1, 2);
+    pixelRatio = Math.min(devicePixelRatio || 1, COARSE_POINTER ? 1.5 : 2);
     width = innerWidth;
     height = innerHeight;
-    rayCount = Math.min(900, Math.max(360, Math.floor(width * .72)));
+    rayCount = Math.min(COARSE_POINTER ? 480 : 900, Math.max(360, Math.floor(width * .72)));
     canvas.width = Math.floor(width * pixelRatio);
     canvas.height = Math.floor(height * pixelRatio);
     context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
@@ -404,7 +406,7 @@ export function createRenderer(canvas, world) {
         const first = screenAt(t0);
         const last = screenAt(t1);
         // Sample about every 3px so occlusion by walls cuts the line close to where the wall begins.
-        const count = Math.min(400, Math.max(subdivisions, Math.ceil(Math.hypot(last.sx - first.sx, last.sy - first.sy) / 3)));
+        const count = Math.min(400, Math.max(subdivisions, Math.ceil(Math.hypot(last.sx - first.sx, last.sy - first.sy) / (COARSE_POINTER ? 5 : 3))));
         let active = false;
         for (let index = 0; index <= count; index++) {
           const t = t0 + (t1 - t0) * index / count;
