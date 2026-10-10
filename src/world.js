@@ -1,10 +1,10 @@
-import { loadPlan, roomIdsIn } from './map-plan.js?v=20261051';
-import { makeCat, makeGuitar, makeSimpleObject, makeWallPicture } from './object-geometry.js?v=20261038';
+import { loadPlan, roomIdsIn } from './map-plan.js?v=20261055';
+import { makeCat, makeGuitar, makeSimpleObject, makeWallPicture } from './object-geometry.js?v=20261054';
 import { SIMPLE_OBJECT_TYPES } from './object-types.js?v=20261038';
 import { SIZE } from './world-constants.js?v=20261038';
 
 export { CELL_FT, SIZE } from './world-constants.js?v=20261038';
-export { parsePlan } from './map-plan.js?v=20261051';
+export { parsePlan } from './map-plan.js?v=20261055';
 
 const PAD = 12;
 const ROOM_LENGTHS = 10;
@@ -130,7 +130,7 @@ export async function createWorld() {
       const doorId = nextDoorId++;
       openDoorCell(cell.x, cell.y, doorId);
       const portal = {
-        id: doorId, pairId: definition.pairId, building: building.name, roomId: definition.roomId,
+        id: doorId, pairId: definition.pairId, building: building.name, roomId: definition.roomId, tollAmount: definition.toll ?? 0,
         side: definition.side, bay: definition.bay, offset: definition.offset,
         x: cell.x + .5, y: cell.y + .5
       };
@@ -150,6 +150,12 @@ export async function createWorld() {
   for (const pair of magicDoorPairs.values()) {
     pair[0].target = pair[1];
     pair[1].target = pair[0];
+    // Both doors of a pair share one toll, so paying at either side opens both for good.
+    const amount = Math.max(...pair.map(portal => portal.tollAmount));
+    if (amount > 0) {
+      const toll = { amount, paid: false };
+      for (const portal of pair) portal.toll = toll;
+    }
   }
 
   const paths = plan.connections.map(connection => {

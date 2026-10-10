@@ -1,4 +1,4 @@
-import { CELL_FT } from './world.js?v=20261053';
+import { CELL_FT } from './world.js?v=20261055';
 import { OBJECT_METADATA } from './object-types.js?v=20261038';
 import { hasClearFootprint } from './placement.js?v=20261038';
 
@@ -127,11 +127,29 @@ export function attachPlayerControls(player, canvas, world) {
     const portal = world.magicDoors.find(door => door.building === playerBuilding && Math.hypot(player.x - door.x, player.y - door.y) < .62);
     if (!portal) return;
     const destination = portal.target;
+    let tollMessage = '';
+    if (portal.toll && !portal.toll.paid) {
+      const { amount } = portal.toll;
+      if (player.credits < amount) {
+        // Push the player back out of the trigger zone so they cannot slip through the doorway.
+        const awayX = player.x - portal.x;
+        const awayY = player.y - portal.y;
+        const away = Math.hypot(awayX, awayY) || 1;
+        player.x = portal.x + awayX / away * .7;
+        player.y = portal.y + awayY / away * .7;
+        setMessage(`This magic door needs a toll of ${amount} credits · you have ${player.credits}`);
+        return;
+      }
+      player.credits -= amount;
+      player.creditFlashId += 1;
+      portal.toll.paid = true;
+      tollMessage = `Toll paid · −${amount} credits · balance ${player.credits} · `;
+    }
     player.x = destination.landingX;
     player.y = destination.landingY;
     player.a = destination.arrivalAngle;
     player.teleportFlash = .35;
-    setMessage(`Magic door · Building ${destination.building} Room ${destination.roomId}`);
+    setMessage(`${tollMessage}Magic door · Building ${destination.building} Room ${destination.roomId}`);
   }
 
   function onKeyDown(event) {

@@ -1,7 +1,7 @@
 window.__roomLinesModuleLoaded = true;
 
-import { createWorld } from './world.js?v=20261053';
-import { createPlayer, attachPlayerControls } from './player.js?v=20261038';
+import { createWorld } from './world.js?v=20261055';
+import { createPlayer, attachPlayerControls } from './player.js?v=20261055';
 import { createRenderer } from './renderer.js?v=20261053';
 import { setupHud } from './hud.js?v=20261038';
 

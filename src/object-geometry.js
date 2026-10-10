@@ -277,6 +277,15 @@ export function makeWallPicture(building, object) {
     addLine([0, artworkY(.58)], [-.06 * scale, artworkY(.74)], [0, artworkY(.94)], [.06 * scale, artworkY(.74)], [0, artworkY(.58)]);
     addLine([-.02 * scale, artworkY(.5)], [-.2 * scale, artworkY(.56)], [-.26 * scale, artworkY(.76)], [-.1 * scale, artworkY(.68)], [-.02 * scale, artworkY(.5)]);
     addLine([.02 * scale, artworkY(.5)], [.2 * scale, artworkY(.56)], [.26 * scale, artworkY(.76)], [.1 * scale, artworkY(.68)], [.02 * scale, artworkY(.5)]);
+  } else if (object.subject === 'toycar') {
+    addLine([-.32 * scale, artworkY(.28)], [.32 * scale, artworkY(.28)], [.3 * scale, artworkY(.48)], [.12 * scale, artworkY(.48)], [.05 * scale, artworkY(.68)], [-.17 * scale, artworkY(.68)], [-.24 * scale, artworkY(.48)], [-.31 * scale, artworkY(.48)], [-.32 * scale, artworkY(.28)]);
+    addLine([-.14 * scale, artworkY(.5)], [-.11 * scale, artworkY(.63)], [.02 * scale, artworkY(.63)], [.07 * scale, artworkY(.5)], [-.14 * scale, artworkY(.5)]);
+    for (const wheelX of [-.18, .18]) {
+      addLine(...Array.from({ length: 13 }, (_, index) => {
+        const angle = index / 12 * Math.PI * 2;
+        return [(wheelX + .07 * Math.cos(angle)) * scale, artworkY(.26) + .07 * scale * Math.sin(angle)];
+      }));
+    }
   } else {
     throw new Error(`Unsupported wall picture subject: ${object.subject}`);
   }

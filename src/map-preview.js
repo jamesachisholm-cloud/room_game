@@ -1,4 +1,4 @@
-import { createWorld } from './world.js?v=20261053';
+import { createWorld } from './world.js?v=20261055';
 import { OBJECT_METADATA, SIMPLE_OBJECT_TYPES } from './object-types.js?v=20261038';
 
 const colors = ['#12302a', '#18302b', '#19352e', '#142a27', '#1a3029', '#172d2a', '#16342e'];

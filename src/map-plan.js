@@ -91,7 +91,7 @@ export function parsePlan(text) {
     } else if (section === 'exits' && current && parts[0] === 'exit') {
       current.exits.push({ side: parts[1], roomId: parts[2].padStart(2, '0'), wallOffset: parts[3] === undefined ? null : Number(parts[3]) });
     } else if (section === 'magicdoors' && current && parts[0] === 'magicdoor') {
-      current.magicDoors.push({ side: parts[1], roomId: parts[2].padStart(2, '0'), pairId: parts[3] });
+      current.magicDoors.push({ side: parts[1], roomId: parts[2].padStart(2, '0'), pairId: parts[3], toll: Number(parts[4] ?? 0) });
     } else if (section === 'objects' && current && ['box', 'table'].includes(parts[0])) {
       current.objects.push({ type: parts[0], col: Number(parts[1]), row: Number(parts[2]), x: Number(parts[3]), y: Number(parts[4]), w: Number(parts[5]), d: Number(parts[6]), h: Number(parts[7]), value: Number(parts[8] ?? OBJECT_METADATA[parts[0]].defaultValue) });
     } else if (section === 'objects' && current && ['cat', 'guitar'].includes(parts[0])) {

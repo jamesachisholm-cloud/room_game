@@ -2,8 +2,8 @@
 # Repeated room IDs join bays into one room. Door offsets are 0-based from the bay edge.
 # Doorway format: door <room-ID> <room-ID> <offset> [width]. Offsets are 0-based; width defaults to 1 map unit. If the rooms share separate wall segments, the door uses the first one found scanning from the northwest.
 # Exit format: exit <north|east|south|west> <room-ID> [wall-offset]. Without an offset, the exit is centered on that room's boundary; an explicit offset is measured from the west or north edge of the building.
-# Wall picture format: picture <box|cat|dog|guitar|coffee-table|h|snake|apple|telephone|glasses|penny|fish|plant> <bay-col> <bay-row> <side> <offset> <bottom-z> <width> <height>.
-# Magic door format: magicdoor <side> <room-ID> <pair-ID>.
+# Wall picture format: picture <box|cat|dog|guitar|coffee-table|h|snake|apple|telephone|glasses|penny|fish|plant|toycar> <bay-col> <bay-row> <side> <offset> <bottom-z> <width> <height>.
+# Magic door format: magicdoor <side> <room-ID> <pair-ID> [toll]. A toll is a one-time credit charge for the pair.
 # Coffee table format: table <bay-col> <bay-row> <x> <y> <width> <depth> <height>.
 
 building A 5 4
@@ -40,6 +40,7 @@ picture snake 4 0 south 3.5 0.18 0.68 0.58
 glasses 0 1 1.6 1.6 0.34 25
 penny 2 1 5.4 1.6 0.28 1
 picture fish 4 1 north 3.5 0.18 0.68 0.58
+picture toycar 4 2 east 3.5 0.18 0.68 0.58
 end
 
 building B 6 4
@@ -141,7 +142,7 @@ doors
 exits
 exit north 01
 magicdoors
-magicdoor east 01 E-F
+magicdoor east 01 E-F 200
 objects
 end
 
