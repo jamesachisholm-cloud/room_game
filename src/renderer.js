@@ -1,6 +1,9 @@
 const PATH_HALF_WIDTH = .5;
 // Phones render at a lower resolution and sample fewer rays and line points.
 const COARSE_POINTER = matchMedia('(pointer: coarse)').matches;
+const NEAR_DEPTH = .26;
+const OBJECT_RANGE = 50;
+const STROKE_LEVELS = 32;
 const WALL_HEIGHT = 1;
 const DOOR_HEIGHT = WALL_HEIGHT;
 const FOV = Math.PI / 3;
@@ -38,8 +41,11 @@ const STARS = (() => {
     const roll = random();
     // About one star in eight is bright, and another few are mid-brightness.
     const bright = roll < .12;
+    const angle = random() * Math.PI * 2 - Math.PI;
     return {
-      angle: random() * Math.PI * 2 - Math.PI,
+      angle,
+      cos: Math.cos(angle),
+      sin: Math.sin(angle),
       height: .02 + random() * .96,
       size: bright ? 2 : 1,
       bright,
@@ -56,37 +62,124 @@ export function createRenderer(canvas, world) {
   let height = 0;
   let pixelRatio = 1;
   let rayCount = 600;
+  let horizon = 0;
+  let focal = 1;
+  let skyGradient = null;
+  let buildingFinishes = [];
+  let moonSprites = [];
+  let cloudSprites = [];
+  // Quality lowers the ray count on slow devices and raises it again when frames are fast.
+  let quality = 1;
+  let frameAverage = 16.7;
+  let framesSinceAdjust = 0;
+  let previousTime = 0;
+  const buildings = world.buildings;
+  const hitPool = [];
+
+  // Flat lookup tables avoid string keys and nested arrays inside the ray loop.
+  const mapWidth = world.width;
+  const mapHeight = world.height;
+  const wallGrid = new Uint8Array(mapWidth * mapHeight);
+  const doorGrid = new Int32Array(mapWidth * mapHeight).fill(-1);
+  const buildingGrid = new Uint8Array(mapWidth * mapHeight);
+  for (let y = 0; y < mapHeight; y++) {
+    for (let x = 0; x < mapWidth; x++) wallGrid[y * mapWidth + x] = world.map[y][x] === 1 ? 1 : 0;
+  }
+  for (const [cell, doorId] of world.doors) {
+    const [x, y] = cell.split(',').map(Number);
+    doorGrid[y * mapWidth + x] = doorId;
+  }
+  buildings.forEach((building, index) => {
+    for (let y = building.y; y < building.y + building.h; y++) {
+      buildingGrid.fill(index + 1, y * mapWidth + building.x, y * mapWidth + building.x + building.w);
+    }
+  });
+  // Style strings are built once; index 0 is the default look for walls outside any building.
+  const buildingHues = [168, ...buildings.map(building => BUILDING_HUES[building.name] ?? 168)];
+  const wallFills = buildingHues.map(hue => `hsl(${hue},40%,10%)`);
+  const wallStrokes = buildingHues.map(hue => Array.from({ length: STROKE_LEVELS + 1 }, (_, level) => `hsla(${hue},55%,68%,${level / STROKE_LEVELS})`));
+  const doorStrokes = Array.from({ length: STROKE_LEVELS + 1 }, (_, level) => `rgba(114,255,208,${level / STROKE_LEVELS})`);
 
   function resize() {
-    pixelRatio = Math.min(devicePixelRatio || 1, COARSE_POINTER ? 1.5 : 2);
+    pixelRatio = Math.min(devicePixelRatio || 1, COARSE_POINTER ? 1.25 : 2);
     width = innerWidth;
     height = innerHeight;
+    horizon = height * .5;
+    focal = width / (2 * Math.tan(FOV / 2));
     rayCount = Math.min(COARSE_POINTER ? 480 : 900, Math.max(360, Math.floor(width * .72)));
     canvas.width = Math.floor(width * pixelRatio);
     canvas.height = Math.floor(height * pixelRatio);
     context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+    skyGradient = context.createLinearGradient(0, 0, 0, horizon);
+    skyGradient.addColorStop(0, '#0d1c1a');
+    skyGradient.addColorStop(1, '#1c3835');
+    buildingFinishes = buildings.map((building, index) => {
+      const hue = buildingHues[index + 1];
+      const ceiling = context.createLinearGradient(0, 0, 0, horizon);
+      ceiling.addColorStop(0, `hsl(${hue},30%,11%)`);
+      ceiling.addColorStop(1, `hsl(${hue},32%,16%)`);
+      return { ceiling, floor: `hsl(${hue},30%,14%)` };
+    });
+    moonSprites = [];
+    cloudSprites = [];
+  }
+  // Clouds are soft, so their sprites are drawn at half resolution to save memory.
+  function renderCloudSprite(cloud) {
+    const spread = focal * cloud.span;
+    const sizeX = Math.ceil(spread * 1.7);
+    const sizeY = Math.ceil(spread * .4 + height * .04);
+    const sprite = document.createElement('canvas');
+    sprite.width = Math.ceil(sizeX * .5);
+    sprite.height = Math.ceil(sizeY * .5);
+    const spriteContext = sprite.getContext('2d');
+    spriteContext.scale(.5, .5);
+    for (const puff of cloud.puffs) {
+      const puffRadius = spread * puff.radius;
+      spriteContext.save();
+      spriteContext.translate(sizeX / 2 + spread * puff.dx, sizeY / 2 + puff.dy * height);
+      spriteContext.scale(1, .3);
+      const body = spriteContext.createRadialGradient(0, 0, 0, 0, 0, puffRadius);
+      body.addColorStop(0, `rgba(205,230,235,${puff.alpha})`);
+      body.addColorStop(.25, `rgba(205,230,235,${puff.alpha * .8})`);
+      body.addColorStop(.5, `rgba(205,230,235,${puff.alpha * .45})`);
+      body.addColorStop(.75, `rgba(205,230,235,${puff.alpha * .15})`);
+      body.addColorStop(1, 'rgba(205,230,235,0)');
+      spriteContext.fillStyle = body;
+      spriteContext.fillRect(-puffRadius, -puffRadius, puffRadius * 2, puffRadius * 2);
+      spriteContext.restore();
+    }
+    return { canvas: sprite, width: sizeX, height: sizeY };
   }
   addEventListener('resize', resize);
   resize();
 
   function draw(player) {
-    const horizon = height * .5;
-    const focal = width / (2 * Math.tan(FOV / 2));
+    const frameStart = performance.now();
+    if (previousTime) {
+      frameAverage += (Math.min(100, frameStart - previousTime) - frameAverage) * .1;
+      if (++framesSinceAdjust >= 45) {
+        framesSinceAdjust = 0;
+        if (frameAverage > 22) quality = Math.max(.45, quality - .1);
+        else if (frameAverage < 17.5) quality = Math.min(1, quality + .05);
+      }
+    }
+    previousTime = frameStart;
     const playerBuilding = world.getRoomAt(player.x, player.y)?.building;
+    const cosA = Math.cos(player.a);
+    const sinA = Math.sin(player.a);
     context.fillStyle = '#081412';
     context.fillRect(0, 0, width, height);
-    const outdoorSky = context.createLinearGradient(0, 0, 0, horizon);
-    outdoorSky.addColorStop(0, '#0d1c1a');
-    outdoorSky.addColorStop(1, '#1c3835');
-    context.fillStyle = outdoorSky;
+    context.fillStyle = skyGradient;
     context.fillRect(0, 0, width, horizon);
     {
-      const seconds = performance.now() / 1000;
+      const seconds = frameStart / 1000;
+      const starLimit = Math.tan(FOV / 2 + .05);
       context.fillStyle = '#e8f4ff';
       for (const star of STARS) {
-        const offset = Math.atan2(Math.sin(star.angle - player.a), Math.cos(star.angle - player.a));
-        if (Math.abs(offset) > FOV / 2 + .05) continue;
-        const starX = width / 2 + focal * Math.tan(offset);
+        const depth = star.cos * cosA + star.sin * sinA;
+        const lateral = star.sin * cosA - star.cos * sinA;
+        if (depth <= 0 || Math.abs(lateral) > depth * starLimit) continue;
+        const starX = width / 2 + focal * lateral / depth;
         const starY = horizon * (1 - star.height);
         const twinkle = .8 + .2 * Math.sin(seconds * 1.5 + star.phase);
         if (star.bright) {
@@ -98,12 +191,24 @@ export function createRenderer(canvas, world) {
       }
       context.globalAlpha = 1;
     }
-    for (const moon of MOONS) {
+    MOONS.forEach((moon, index) => {
       const offset = Math.atan2(Math.sin(moon.angle - player.a), Math.cos(moon.angle - player.a));
-      if (Math.abs(offset) > FOV / 2 + .3) continue;
-      const moonX = width / 2 + focal * Math.tan(offset);
-      const moonY = horizon * (1 - moon.height);
+      if (Math.abs(offset) > FOV / 2 + .3) return;
+      const sprite = moonSprites[index] ?? (moonSprites[index] = renderMoonSprite(moon));
+      context.drawImage(sprite.canvas, width / 2 + focal * Math.tan(offset) - sprite.size / 2, horizon * (1 - moon.height) - sprite.size / 2, sprite.size, sprite.size);
+    });
+
+    // Each moon is drawn once into a sprite, because its gradients are costly to rebuild every frame.
+    function renderMoonSprite(moon) {
       const moonRadius = height * moon.radius;
+      const size = Math.ceil(moonRadius * 6.8);
+      const sprite = document.createElement('canvas');
+      sprite.width = Math.ceil(size * pixelRatio);
+      sprite.height = sprite.width;
+      const context = sprite.getContext('2d');
+      context.scale(pixelRatio, pixelRatio);
+      const moonX = size / 2;
+      const moonY = size / 2;
       context.globalAlpha = .78;
       const glow = context.createRadialGradient(moonX, moonY, moonRadius * .6, moonX, moonY, moonRadius * 3.2);
       glow.addColorStop(0, `${moon.color}44`);
@@ -143,48 +248,24 @@ export function createRenderer(canvas, world) {
       context.fillStyle = shade;
       context.fillRect(moonX - moonRadius, moonY - moonRadius, moonRadius * 2, moonRadius * 2);
       context.restore();
-      context.globalAlpha = 1;
+      return { canvas: sprite, size };
     }
     {
-      const drift = performance.now() * 8e-6;
-      for (const cloud of CLOUDS) {
+      const drift = frameStart * 8e-6;
+      CLOUDS.forEach((cloud, index) => {
         const offset = Math.atan2(Math.sin(cloud.angle + drift - player.a), Math.cos(cloud.angle + drift - player.a));
-        if (Math.abs(offset) > FOV / 2 + cloud.span / 2) continue;
-        const cloudX = width / 2 + focal * Math.tan(offset);
-        const cloudY = horizon * (1 - cloud.height);
-        const spread = focal * cloud.span;
-        for (const puff of cloud.puffs) {
-          const puffRadius = spread * puff.radius;
-          context.save();
-          context.translate(cloudX + spread * puff.dx, cloudY + puff.dy * height);
-          context.scale(1, .3);
-          const body = context.createRadialGradient(0, 0, 0, 0, 0, puffRadius);
-          body.addColorStop(0, `rgba(205,230,235,${puff.alpha})`);
-          body.addColorStop(.25, `rgba(205,230,235,${puff.alpha * .8})`);
-          body.addColorStop(.5, `rgba(205,230,235,${puff.alpha * .45})`);
-          body.addColorStop(.75, `rgba(205,230,235,${puff.alpha * .15})`);
-          body.addColorStop(1, 'rgba(205,230,235,0)');
-          context.fillStyle = body;
-          context.fillRect(-puffRadius, -puffRadius, puffRadius * 2, puffRadius * 2);
-          context.restore();
-        }
-      }
+        if (Math.abs(offset) > FOV / 2 + cloud.span / 2) return;
+        const sprite = cloudSprites[index] ?? (cloudSprites[index] = renderCloudSprite(cloud));
+        context.drawImage(sprite.canvas, width / 2 + focal * Math.tan(offset) - sprite.width / 2, horizon * (1 - cloud.height) - sprite.height / 2, sprite.width, sprite.height);
+      });
     }
     context.fillStyle = '#101d1a';
     context.fillRect(0, horizon, width, height - horizon);
-    // Roofs and floors are drawn per column, only where the ray passes through a building footprint.
-    const buildingFinishes = new Map();
-    for (const building of world.buildings) {
-      const hue = BUILDING_HUES[building.name] ?? 168;
-      const ceiling = context.createLinearGradient(0, 0, 0, horizon);
-      ceiling.addColorStop(0, `hsl(${hue},30%,11%)`);
-      ceiling.addColorStop(1, `hsl(${hue},32%,16%)`);
-      buildingFinishes.set(building.name, { ceiling, floor: `hsl(${hue},30%,14%)` });
-    }
 
-    const step = Math.max(2, Math.ceil(width / rayCount));
-    const hits = [];
-    const now = performance.now();
+    const step = Math.max(2, Math.ceil(width / (rayCount * quality)));
+    let hitCount = 0;
+    const now = frameStart;
+    const maxRaySteps = Math.min(mapWidth + mapHeight, COARSE_POINTER ? 250 : 400);
     const objectStyle = object => {
       const remaining = (object.flashUntil ?? 0) - now;
       if (remaining > 0) {
@@ -209,9 +290,10 @@ export function createRenderer(canvas, world) {
     context.stroke();
 
     for (let sx = 0; sx < width; sx += step) {
-      const rayAngle = player.a + Math.atan((sx - width / 2) / focal);
-      const rayX = Math.cos(rayAngle);
-      const rayY = Math.sin(rayAngle);
+      const screenOffset = (sx - width / 2) / focal;
+      const cosDelta = 1 / Math.sqrt(1 + screenOffset * screenOffset);
+      const rayX = (cosA - sinA * screenOffset) * cosDelta;
+      const rayY = (sinA + cosA * screenOffset) * cosDelta;
       let mapX = Math.floor(player.x);
       let mapY = Math.floor(player.y);
       const deltaX = Math.abs(1 / rayX);
@@ -229,7 +311,7 @@ export function createRenderer(canvas, world) {
       let magicDoorPanel = false;
       const rayDoors = [];
 
-      for (let i = 0; i < Math.min(world.width + world.height, 400); i++) {
+      for (let i = 0; i < maxRaySteps; i++) {
         if (sideX < sideY) {
           distance = sideX;
           sideX += deltaX;
@@ -241,9 +323,10 @@ export function createRenderer(canvas, world) {
           mapY += stepY;
           side = 1;
         }
-        if (mapX < 0 || mapY < 0 || mapX >= world.width || mapY >= world.height) break;
-        const doorId = world.doors.get(`${mapX},${mapY}`);
-        if (doorId !== undefined) {
+        if (mapX < 0 || mapY < 0 || mapX >= mapWidth || mapY >= mapHeight) break;
+        const cell = mapY * mapWidth + mapX;
+        const doorId = doorGrid[cell];
+        if (doorId >= 0) {
           const portal = magicDoorById.get(doorId);
           if (portal && portal.building !== playerBuilding) {
             hitX = mapX;
@@ -261,7 +344,7 @@ export function createRenderer(canvas, world) {
             break;
           }
         }
-        if (world.map[mapY][mapX] === 1) {
+        if (wallGrid[cell] === 1) {
           hitX = mapX;
           hitY = mapY;
           wallHit = true;
@@ -269,9 +352,9 @@ export function createRenderer(canvas, world) {
         }
       }
 
-      distance = Math.max(.08, distance * Math.cos(rayAngle - player.a));
+      distance = Math.max(.08, distance * cosDelta);
       for (const door of rayDoors) {
-        const doorDepth = door.distance * Math.cos(rayAngle - player.a);
+        const doorDepth = door.distance * cosDelta;
         let visible = visibleDoors.get(door.id);
         if (!visible) {
           visibleDoors.set(door.id, visible = { left: sx, right: sx + step, leftDepth: doorDepth, rightDepth: doorDepth, magic: world.magicDoorIds.has(door.id) });
@@ -287,23 +370,29 @@ export function createRenderer(canvas, world) {
         }
       }
 
-      const cosDelta = Math.cos(rayAngle - player.a);
-      for (const building of world.buildings) {
+      for (let buildingIndex = 0; buildingIndex < buildings.length; buildingIndex++) {
+        const building = buildings[buildingIndex];
         let tMin = -Infinity;
         let tMax = Infinity;
-        for (const [origin, direction, low, size] of [[player.x, rayX, building.x, building.w], [player.y, rayY, building.y, building.h]]) {
-          if (Math.abs(direction) < 1e-9) {
-            if (origin < low || origin > low + size) tMax = -Infinity;
-          } else {
-            const a = (low - origin) / direction;
-            const b = (low + size - origin) / direction;
-            tMin = Math.max(tMin, Math.min(a, b));
-            tMax = Math.min(tMax, Math.max(a, b));
-          }
+        if (Math.abs(rayX) < 1e-9) {
+          if (player.x < building.x || player.x > building.x + building.w) continue;
+        } else {
+          const a = (building.x - player.x) / rayX;
+          const b = (building.x + building.w - player.x) / rayX;
+          tMin = a < b ? a : b;
+          tMax = a < b ? b : a;
+        }
+        if (Math.abs(rayY) < 1e-9) {
+          if (player.y < building.y || player.y > building.y + building.h) continue;
+        } else {
+          const a = (building.y - player.y) / rayY;
+          const b = (building.y + building.h - player.y) / rayY;
+          tMin = Math.max(tMin, a < b ? a : b);
+          tMax = Math.min(tMax, a < b ? b : a);
         }
         const enter = Math.max(tMin, 0);
         if (tMax <= enter) continue;
-        const finishes = buildingFinishes.get(building.name);
+        const finishes = buildingFinishes[buildingIndex];
         const near = enter * cosDelta;
         const far = tMax * cosDelta;
         const roofTop = near < .01 ? 0 : Math.max(0, horizon - focal * WALL_HEIGHT / 2 / near);
@@ -320,111 +409,91 @@ export function createRenderer(canvas, world) {
         }
       }
 
-      hits.push({ sx, distance, hitX, hitY, side, wallHit });
+      const hit = hitPool[hitCount] ?? (hitPool[hitCount] = {});
+      hit.distance = distance;
+      hit.wallHit = wallHit;
+      hitCount++;
       if (!wallHit) continue;
       const wallHeight = Math.min(height * 1.8, focal * WALL_HEIGHT / distance);
       const top = horizon - wallHeight / 2;
       const bottom = horizon + wallHeight / 2;
       const alpha = Math.max(.13, .72 - distance * .0012 - (side ? .16 : 0));
-      const hitBuilding = world.buildings.find(b => hitX >= b.x && hitX < b.x + b.w && hitY >= b.y && hitY < b.y + b.h);
-      const hue = BUILDING_HUES[hitBuilding?.name] ?? 168;
-      context.strokeStyle = `hsla(${hue},55%,68%,${alpha})`;
-      context.lineWidth = 1;
+      const level = Math.round(alpha * STROKE_LEVELS);
+      const owner = buildingGrid[hitY * mapWidth + hitX];
       if (doorPanel) {
         const panelHeight = Math.min(wallHeight, focal * DOOR_HEIGHT / distance);
         const panelTop = bottom - panelHeight;
         context.fillStyle = magicDoorPanel ? '#24102e' : '#102421';
         context.fillRect(sx, panelTop, step + 1, panelHeight);
-        context.strokeStyle = magicDoorPanel ? 'rgba(224,112,255,.95)' : `rgba(114,255,208,${Math.max(.35, alpha)})`;
-        context.beginPath();
-        context.moveTo(sx, panelTop);
-        context.lineTo(sx, bottom);
-        context.stroke();
+        context.fillStyle = magicDoorPanel ? 'rgba(224,112,255,.95)' : doorStrokes[Math.max(Math.round(.35 * STROKE_LEVELS), level)];
+        context.fillRect(sx, panelTop, 1, panelHeight);
       } else {
-        context.fillStyle = `hsl(${hue},40%,10%)`;
+        context.fillStyle = wallFills[owner];
         context.fillRect(sx, top, step + 1, wallHeight);
-        context.beginPath();
-        context.moveTo(sx, top);
-        context.lineTo(sx, bottom);
-        context.stroke();
+        context.fillStyle = wallStrokes[owner][level];
+        context.fillRect(sx, top, 1, wallHeight);
       }
     }
 
-    function projectPoint(x, y, z = 0, ignoreWalls = false) {
-      const dx = x - player.x;
-      const dy = y - player.y;
-      const depth = dx * Math.cos(player.a) + dy * Math.sin(player.a);
-      const lateral = -dx * Math.sin(player.a) + dy * Math.cos(player.a);
-      if (depth < .25) return null;
-      const sx = width / 2 + focal * lateral / depth;
-      const sy = horizon + focal * (WALL_HEIGHT / 2 - z) / depth;
-      const ray = hits[Math.min(hits.length - 1, Math.max(0, Math.floor(sx / step)))];
-      return { sx, sy, visible: ignoreWalls || !ray || !ray.wallHit || depth <= ray.distance + .5 };
-    }
+    // Polylines are projected with plain numbers (no per-point objects) so phones avoid garbage-collection stalls.
+    let clipStart = 0;
+    let clipEnd = 1;
+    const clipPlane = (fa, fb) => {
+      if (fa < 0 && fb < 0) return false;
+      if (fa < 0) clipStart = Math.max(clipStart, fa / (fa - fb));
+      else if (fb < 0) clipEnd = Math.min(clipEnd, fa / (fa - fb));
+      return true;
+    };
+    const screenEdge = (width / 2 + 10) / focal;
+    const sampleSpacing = COARSE_POINTER ? 5 : 3;
     function drawProjectedPolyline(points, style, ignoreWalls = false, subdivisions = 10) {
       context.strokeStyle = style.color;
       context.lineWidth = style.width;
       context.beginPath();
-      const cosA = Math.cos(player.a);
-      const sinA = Math.sin(player.a);
-      // Slightly beyond the .25 cutoff in projectPoint so clipped ends are never rejected.
-      const nearDepth = .26;
-      const edge = (width / 2 + 10) / focal;
-      const toCamera = point => {
-        const dx = point.x - player.x;
-        const dy = point.y - player.y;
-        return { depth: dx * cosA + dy * sinA, lateral: -dx * sinA + dy * cosA };
-      };
       for (let segment = 0; segment < points.length - 1; segment++) {
         const start = points[segment];
         const end = points[segment + 1];
-        const a = toCamera(start);
-        const b = toCamera(end);
-        let t0 = 0;
-        let t1 = 1;
-        let inside = true;
+        const startDx = start.x - player.x;
+        const startDy = start.y - player.y;
+        const endDx = end.x - player.x;
+        const endDy = end.y - player.y;
+        const aDepth = startDx * cosA + startDy * sinA;
+        const aLateral = -startDx * sinA + startDy * cosA;
+        const bDepth = endDx * cosA + endDy * sinA;
+        const bLateral = -endDx * sinA + endDy * cosA;
+        clipStart = 0;
+        clipEnd = 1;
         // Clip against the near plane and both side edges of the screen so lines run right to the edge.
-        for (const [fa, fb] of [
-          [a.depth - nearDepth, b.depth - nearDepth],
-          [a.lateral + edge * a.depth, b.lateral + edge * b.depth],
-          [edge * a.depth - a.lateral, edge * b.depth - b.lateral]
-        ]) {
-          if (fa < 0 && fb < 0) { inside = false; break; }
-          if (fa < 0) t0 = Math.max(t0, fa / (fa - fb));
-          else if (fb < 0) t1 = Math.min(t1, fa / (fa - fb));
-        }
-        if (!inside || t0 >= t1) continue;
+        if (!clipPlane(aDepth - NEAR_DEPTH, bDepth - NEAR_DEPTH)
+          || !clipPlane(aLateral + screenEdge * aDepth, bLateral + screenEdge * bDepth)
+          || !clipPlane(screenEdge * aDepth - aLateral, screenEdge * bDepth - bLateral)
+          || clipStart >= clipEnd) continue;
         const startZ = start.z ?? 0;
         const endZ = end.z ?? 0;
-        const screenAt = t => {
-          const depth = a.depth + (b.depth - a.depth) * t;
-          return {
-            sx: width / 2 + focal * (a.lateral + (b.lateral - a.lateral) * t) / depth,
-            sy: horizon + focal * (WALL_HEIGHT / 2 - (startZ + (endZ - startZ) * t)) / depth
-          };
-        };
-        const first = screenAt(t0);
-        const last = screenAt(t1);
-        // Sample about every 3px so occlusion by walls cuts the line close to where the wall begins.
-        const count = Math.min(400, Math.max(subdivisions, Math.ceil(Math.hypot(last.sx - first.sx, last.sy - first.sy) / (COARSE_POINTER ? 5 : 3))));
+        const firstDepth = aDepth + (bDepth - aDepth) * clipStart;
+        const lastDepth = aDepth + (bDepth - aDepth) * clipEnd;
+        const firstX = width / 2 + focal * (aLateral + (bLateral - aLateral) * clipStart) / firstDepth;
+        const lastX = width / 2 + focal * (aLateral + (bLateral - aLateral) * clipEnd) / lastDepth;
+        const firstY = horizon + focal * (WALL_HEIGHT / 2 - (startZ + (endZ - startZ) * clipStart)) / firstDepth;
+        const lastY = horizon + focal * (WALL_HEIGHT / 2 - (startZ + (endZ - startZ) * clipEnd)) / lastDepth;
+        // Sampling every few pixels lets walls cut the line close to where they begin.
+        const count = Math.min(400, Math.max(subdivisions, Math.ceil(Math.hypot(lastX - firstX, lastY - firstY) / sampleSpacing)));
         let active = false;
         for (let index = 0; index <= count; index++) {
-          const t = t0 + (t1 - t0) * index / count;
-          const point = projectPoint(
-            start.x + (end.x - start.x) * t,
-            start.y + (end.y - start.y) * t,
-            startZ + (endZ - startZ) * t,
-            ignoreWalls
-          );
-          if (!point || !point.visible) {
+          const t = clipStart + (clipEnd - clipStart) * index / count;
+          const depth = aDepth + (bDepth - aDepth) * t;
+          const screenX = width / 2 + focal * (aLateral + (bLateral - aLateral) * t) / depth;
+          const screenY = horizon + focal * (WALL_HEIGHT / 2 - (startZ + (endZ - startZ) * t)) / depth;
+          const hit = hitPool[Math.min(hitCount - 1, Math.max(0, Math.floor(screenX / step)))];
+          if (!ignoreWalls && hit && hit.wallHit && depth > hit.distance + .5) {
             active = false;
             continue;
           }
           if (!active) {
-            context.moveTo(point.sx, point.sy);
+            context.moveTo(screenX, screenY);
             active = true;
           } else {
-            context.lineTo(point.sx, point.sy);
+            context.lineTo(screenX, screenY);
           }
         }
       }
@@ -474,6 +543,8 @@ export function createRenderer(canvas, world) {
       }
     }
     const objectLineStyle = { color: 'rgba(114,255,208,.72)', width: 1.5 };
+    // Objects beyond this range are too small to see and are skipped.
+    const isNear = object => (object.x - player.x) ** 2 + (object.y - player.y) ** 2 < OBJECT_RANGE ** 2;
     function drawCuboid(box, ignoreWalls = false, lineStyle = objectLineStyle) {
       const baseZ = box.z ?? 0;
       const corners = [];
@@ -491,12 +562,13 @@ export function createRenderer(canvas, world) {
       for (const part of cat.cuboids ?? []) drawCuboid(part, ignoreWalls, lineStyle);
       for (const line of cat.lines) drawProjectedPolyline(line, lineStyle, ignoreWalls);
     }
-    for (const box of world.boxes) if (!box.held) drawCuboid(box, false, objectStyle(box));
-    for (const table of world.tables) if (!table.held) for (const part of table.parts) drawCuboid(part, false, objectStyle(table));
-    if (world.cat && !world.cat.held) drawWireObject(world.cat, false, objectStyle(world.cat));
-    for (const guitar of world.guitars) if (!guitar.held) drawWireObject(guitar, false, objectStyle(guitar));
-    for (const object of world.wireObjects) if (!object.held) drawWireObject(object, false, objectStyle(object));
+    for (const box of world.boxes) if (!box.held && isNear(box)) drawCuboid(box, false, objectStyle(box));
+    for (const table of world.tables) if (!table.held && isNear(table)) for (const part of table.parts) drawCuboid(part, false, objectStyle(table));
+    if (world.cat && !world.cat.held && isNear(world.cat)) drawWireObject(world.cat, false, objectStyle(world.cat));
+    for (const guitar of world.guitars) if (!guitar.held && isNear(guitar)) drawWireObject(guitar, false, objectStyle(guitar));
+    for (const object of world.wireObjects) if (!object.held && isNear(object)) drawWireObject(object, false, objectStyle(object));
     for (const picture of world.pictures) {
+      if (!isNear(picture)) continue;
       const lineStyle = objectStyle(picture);
       for (const line of picture.lines) drawProjectedPolyline(line, lineStyle);
     }
