@@ -8,7 +8,7 @@ canvas { display:block; width:100%; height:100%; }
 #help { position:fixed; left:50%; bottom:18px; transform:translateX(-50%); white-space:nowrap; color:#b8d3ce; background:#07100fba; border:1px solid #70a9a044; padding:8px 12px; pointer-events:none; }
 #intro { position:fixed; inset:0; display:grid; place-items:center; background:#06100ed9; text-align:center; transition:opacity .35s; }
 #intro.hidden { opacity:0; pointer-events:none }
-#intro section { max-width:530px; padding:30px; border:1px solid #72ffd066; background:#091614; box-shadow:0 0 70px #72ffd012; }
+#intro section { max-width:530px; max-height:100dvh; overflow-y:auto; padding:30px; border:1px solid #72ffd066; background:#091614; box-shadow:0 0 70px #72ffd012; }
 h1 { margin:0 0 10px; font-weight:500; letter-spacing:.24em; color:var(--glow); font-size:clamp(26px,5vw,42px) }
 p { color:#aac6bf; margin:8px 0 20px }
 button { cursor:pointer; color:#07100f; background:var(--glow); border:0; padding:12px 22px; font:inherit; font-weight:bold; letter-spacing:.1em; }
@@ -50,6 +50,10 @@ button { cursor:pointer; color:#07100f; background:var(--glow); border:0; paddin
 @media (pointer: coarse) {
   html,body { touch-action:none; overscroll-behavior:none; -webkit-user-select:none; user-select:none; font-size:12px; }
   canvas { touch-action:none; }
+  #intro section { max-width:min(640px,92vw); padding:12px 18px; touch-action:pan-y; }
+  #intro h1 { margin-bottom:4px; font-size:22px; }
+  #intro p { margin:4px 0 8px; font-size:11px; line-height:1.3; }
+  #intro button { padding:10px 22px; }
   .touch-only { display:block; }
   #hud { inset:8px 8px auto; gap:6px; }
   .card { padding:5px 8px; font-size:11px; }
