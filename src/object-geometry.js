@@ -139,6 +139,31 @@ export function makeSimpleObject(type, x, y, scale) {
     addLine([0, 0, .62], [-.09, 0, .8], [0, 0, 1], [.09, 0, .8], [0, 0, .62]);
     addLine([-.1, 0, .55], [-.36, 0, .62], [-.42, 0, .84], [-.2, 0, .76], [-.1, 0, .55]);
     addLine([.1, 0, .55], [.36, 0, .62], [.42, 0, .84], [.2, 0, .76], [.1, 0, .55]);
+  } else if (type === 'anvil') {
+    const profile = [[-.72, .48], [-.9, .48], [-.9, .57], [-.66, .63], [-.4, .55], [.38, .55], [.49, .42], [.56, .17], [.72, .1], [.72, .04], [-.58, .04], [-.58, .1], [-.44, .19], [-.48, .43], [-.72, .48]];
+    for (const py of [-.14, .14]) addLine(...profile.map(([px, z]) => [px, py, z]));
+    for (const [px, z] of [[-.9, .48], [-.9, .57], [-.66, .63], [.38, .55], [.49, .42], [.56, .17], [.72, .1], [-.58, .04]]) {
+      addLine([px, -.14, z], [px, .14, z]);
+    }
+  } else if (type === 'clock') {
+    for (const py of [-.17, .17]) {
+      addLine([-.31, py, .08], [.31, py, .08], [.31, py, 1.3], [.22, py, 1.3], [0, py, 1.56], [-.22, py, 1.3], [-.31, py, 1.3], [-.31, py, .08]);
+    }
+    for (const [px, z] of [[-.31, .08], [.31, .08], [.31, 1.3], [.22, 1.3], [0, 1.56], [-.22, 1.3], [-.31, 1.3]]) addLine([px, -.17, z], [px, .17, z]);
+    circle(0, 1.02, .2, .2, -.18, 16);
+    addLine([0, -.19, 1.02], [0, -.19, 1.16]);
+    addLine([0, -.19, 1.02], [.1, -.19, .98]);
+    circle(0, .48, .12, .12, -.18, 12);
+    addLine([-.38, -.17, .36], [.38, -.17, .36]);
+    addLine([-.38, .17, .36], [.38, .17, .36]);
+  } else if (type === 'horseshoe') {
+    const outer = [[-.38, .94], [-.55, .82], [-.55, .43], [-.4, .14], [-.2, .06], [0, .14], [.2, .06], [.4, .14], [.55, .43], [.55, .82], [.38, .94]];
+    const inner = [[-.25, .9], [-.38, .78], [-.38, .45], [-.28, .24], [-.14, .2], [0, .28], [.14, .2], [.28, .24], [.38, .45], [.38, .78], [.25, .9]];
+    for (const py of [-.07, .07]) {
+      addLine(...outer.map(([px, z]) => [px, py, z]));
+      addLine(...inner.map(([px, z]) => [px, py, z]));
+    }
+    for (const [px, z] of [[-.38, .94], [-.55, .82], [-.55, .43], [-.4, .14], [0, .14], [.4, .14], [.55, .43], [.55, .82], [.38, .94]]) addLine([px, -.07, z], [px, .07, z]);
   } else {
     throw new Error(`Unsupported object type: ${type}`);
   }
@@ -219,12 +244,19 @@ export function makeWallPicture(building, object) {
     addLine([-.32 * scale, artworkY(.72)], [0, artworkY(.9)], [.32 * scale, artworkY(.72)]);
     addLine([0, artworkY(.2)], [0, artworkY(.9)]);
   } else if (object.subject === 'guitar') {
-    addLine([0, artworkY(.16)], [-.14 * scale, artworkY(.2)], [-.24 * scale, artworkY(.35)], [-.22 * scale, artworkY(.52)], [-.12 * scale, artworkY(.59)], [-.06 * scale, artworkY(.55)], [0, artworkY(.53)], [.06 * scale, artworkY(.55)], [.12 * scale, artworkY(.59)], [.22 * scale, artworkY(.52)], [.24 * scale, artworkY(.35)], [.14 * scale, artworkY(.2)], [0, artworkY(.16)]);
-    addLine([-.055 * scale, artworkY(.54)], [-.045 * scale, artworkY(.9)], [.045 * scale, artworkY(.9)], [.055 * scale, artworkY(.54)]);
-    addLine([-.045 * scale, artworkY(.88)], [-.075 * scale, artworkY(.96)], [.075 * scale, artworkY(.96)], [.045 * scale, artworkY(.88)]);
-    addLine([0, artworkY(.23)], [0, artworkY(.95)]);
-    addLine([-.13 * scale, artworkY(.29)], [.13 * scale, artworkY(.29)]);
-    addLine([-.11 * scale, artworkY(.36)], [.11 * scale, artworkY(.36)]);
+    addLine([0, artworkY(.13)], [-.25 * scale, artworkY(.15)], [-.43 * scale, artworkY(.25)], [-.46 * scale, artworkY(.42)], [-.37 * scale, artworkY(.56)], [-.21 * scale, artworkY(.61)], [-.08 * scale, artworkY(.56)], [0, artworkY(.53)], [.08 * scale, artworkY(.56)], [.21 * scale, artworkY(.61)], [.37 * scale, artworkY(.56)], [.46 * scale, artworkY(.42)], [.43 * scale, artworkY(.25)], [.25 * scale, artworkY(.15)], [0, artworkY(.13)]);
+    addLine([-.13 * scale, artworkY(.52)], [-.12 * scale, artworkY(.91)], [.12 * scale, artworkY(.91)], [.13 * scale, artworkY(.52)]);
+    addLine([-.12 * scale, artworkY(.89)], [-.17 * scale, artworkY(.93)], [-.16 * scale, artworkY(.99)], [-.07 * scale, artworkY(1)], [.13 * scale, artworkY(.98)], [.16 * scale, artworkY(.93)], [.12 * scale, artworkY(.89)]);
+    addLine(...Array.from({ length: 17 }, (_, index) => {
+      const angle = index / 16 * Math.PI * 2;
+      return [.085 * scale * Math.cos(angle), artworkY(.39 + .095 * Math.sin(angle))];
+    }));
+    addLine([-.14 * scale, artworkY(.26)], [.14 * scale, artworkY(.26)]);
+    addLine([-.12 * scale, artworkY(.29)], [.12 * scale, artworkY(.29)]);
+    for (const offset of [-.06, -.02, .02, .06]) addLine([offset * scale, artworkY(.29)], [offset * .62 * scale, artworkY(.95)]);
+    for (const fraction of [.61, .68, .74, .79, .84, .88]) addLine([-.12 * scale, artworkY(fraction)], [.12 * scale, artworkY(fraction)]);
+    addLine([-.16 * scale, artworkY(.95)], [-.22 * scale, artworkY(.95)]);
+    addLine([.16 * scale, artworkY(.95)], [.22 * scale, artworkY(.95)]);
   } else if (object.subject === 'h') {
     addLine([-.22 * scale, artworkY(.16)], [-.12 * scale, artworkY(.16)], [-.12 * scale, artworkY(.84)], [-.22 * scale, artworkY(.84)], [-.22 * scale, artworkY(.16)]);
     addLine([.12 * scale, artworkY(.16)], [.22 * scale, artworkY(.16)], [.22 * scale, artworkY(.84)], [.12 * scale, artworkY(.84)], [.12 * scale, artworkY(.16)]);
@@ -285,6 +317,24 @@ export function makeWallPicture(building, object) {
         const angle = index / 12 * Math.PI * 2;
         return [(wheelX + .07 * Math.cos(angle)) * scale, artworkY(.26) + .07 * scale * Math.sin(angle)];
       }));
+    }
+  } else if (object.subject === 'anvil') {
+    addLine([-.34 * scale, artworkY(.48)], [-.43 * scale, artworkY(.48)], [-.43 * scale, artworkY(.57)], [-.31 * scale, artworkY(.63)], [-.19 * scale, artworkY(.55)], [.2 * scale, artworkY(.55)], [.28 * scale, artworkY(.42)], [.31 * scale, artworkY(.19)], [.42 * scale, artworkY(.1)], [.42 * scale, artworkY(.04)], [-.31 * scale, artworkY(.04)], [-.31 * scale, artworkY(.1)], [-.23 * scale, artworkY(.19)], [-.25 * scale, artworkY(.43)], [-.34 * scale, artworkY(.48)]);
+  } else if (object.subject === 'clock') {
+    addLine([-.24 * scale, artworkY(.12)], [.24 * scale, artworkY(.12)], [.24 * scale, artworkY(.78)], [-.24 * scale, artworkY(.78)], [-.24 * scale, artworkY(.12)]);
+    addLine([-.24 * scale, artworkY(.78)], [-.17 * scale, artworkY(.9)], [0, artworkY(.98)], [.17 * scale, artworkY(.9)], [.24 * scale, artworkY(.78)]);
+    addLine(...Array.from({ length: 17 }, (_, index) => {
+      const angle = index / 16 * Math.PI * 2;
+      return [.145 * scale * Math.cos(angle), artworkY(.62 + .22 * Math.sin(angle))];
+    }));
+    addLine([0, artworkY(.62)], [0, artworkY(.76)]);
+    addLine([0, artworkY(.62)], [.08 * scale, artworkY(.58)]);
+    addLine([-.18 * scale, artworkY(.16)], [.18 * scale, artworkY(.16)]);
+  } else if (object.subject === 'horseshoe') {
+    addLine([-.22 * scale, artworkY(.92)], [-.33 * scale, artworkY(.82)], [-.33 * scale, artworkY(.42)], [-.24 * scale, artworkY(.2)], [-.12 * scale, artworkY(.12)], [0, artworkY(.2)], [.12 * scale, artworkY(.12)], [.24 * scale, artworkY(.2)], [.33 * scale, artworkY(.42)], [.33 * scale, artworkY(.82)], [.22 * scale, artworkY(.92)]);
+    addLine([-.14 * scale, artworkY(.92)], [-.22 * scale, artworkY(.82)], [-.22 * scale, artworkY(.44)], [-.16 * scale, artworkY(.28)], [-.08 * scale, artworkY(.24)], [0, artworkY(.3)], [.08 * scale, artworkY(.24)], [.16 * scale, artworkY(.28)], [.22 * scale, artworkY(.44)], [.22 * scale, artworkY(.82)], [.14 * scale, artworkY(.92)]);
+    for (const [u, v] of [[-.27, .72], [-.27, .5], [.27, .72], [.27, .5]]) {
+      addLine([u * scale, artworkY(v)], [(u + .025) * scale, artworkY(v + .025)]);
     }
   } else {
     throw new Error(`Unsupported wall picture subject: ${object.subject}`);

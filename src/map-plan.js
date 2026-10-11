@@ -1,5 +1,5 @@
 import { SIZE } from './world-constants.js?v=20261038';
-import { OBJECT_METADATA, SIMPLE_OBJECT_TYPES } from './object-types.js?v=20261038';
+import { OBJECT_METADATA, SIMPLE_OBJECT_TYPES } from './object-types.js?v=20261039';
 
 export async function loadPlan() {
   const response = await fetch('./maps/world.map?v=20261038', { cache: 'no-store' });

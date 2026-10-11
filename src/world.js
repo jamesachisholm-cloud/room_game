@@ -1,10 +1,10 @@
-import { loadPlan, roomIdsIn } from './map-plan.js?v=20261055';
-import { makeCat, makeGuitar, makeSimpleObject, makeWallPicture } from './object-geometry.js?v=20261054';
-import { SIMPLE_OBJECT_TYPES } from './object-types.js?v=20261038';
+import { loadPlan, roomIdsIn } from './map-plan.js?v=20261056';
+import { makeCat, makeGuitar, makeSimpleObject, makeWallPicture } from './object-geometry.js?v=20261056';
+import { SIMPLE_OBJECT_TYPES } from './object-types.js?v=20261039';
 import { SIZE } from './world-constants.js?v=20261038';
 
 export { CELL_FT, SIZE } from './world-constants.js?v=20261038';
-export { parsePlan } from './map-plan.js?v=20261055';
+export { parsePlan } from './map-plan.js?v=20261056';
 
 const PAD = 12;
 const ROOM_LENGTHS = 10;

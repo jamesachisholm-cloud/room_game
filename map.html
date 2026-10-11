@@ -19,11 +19,12 @@
     <p><code>exit east 07</code> places an outside door on the east exterior wall of room 07, centered along that room's boundary. Add an optional wall offset, such as <code>exit east 09 20</code>, to align linked building exits; offsets count map units from the west edge for north/south walls or the north edge for east/west walls. The <code>connections</code> section links exits and paths.</p>
     <p><code>magicdoor north 04 A-B</code> links a room-side portal to the other door with the same pair ID. Each door is centered on the named room's exterior wall.</p>
     <p>Object lines are <code>box col row x y width depth height credits</code>, <code>table col row x y width depth height credits</code>, <code>cat col row x y scale credits</code>, or <code>guitar|h|snake|apple|telephone|glasses|toycar|dog|penny|fish col row x y scale credits</code>. Drop a paired object in a room containing its matching picture to earn credits; the object stays on display. Picking it up again reverses the credit and clears the pairing. A wall picture is <code>picture box|cat|dog|guitar|coffee-table|h|snake|apple|telephone|glasses|penny|fish col row side offset bottom-z width height</code>. Its side is north, east, south, or west; offset runs from the west edge on north/south walls or the north edge on east/west walls. For floor objects, x and y are map units within the bay. This page is the visual map reference, so save the source and refresh the preview after editing.</p>
+    <p>Anvil, clock, and horseshoe objects use <code>type col row x y scale credits</code>; their matching wall pictures use <code>picture type col row side offset bottom-z width height</code>.</p>
   </section>
   <div id="status">Loading map…</div>
   <section id="buildings" class="buildings"></section>
   <p class="legend"><span class="wall-key"></span> wall <span class="door-key"></span> doorway <span class="exit-key"></span> outside door <span class="picture-key"></span> wall picture <span class="magic-key"></span> magic door</p>
 </main>
-<script type="module" src="src/map-preview.js?v=20261038"></script>
+<script type="module" src="src/map-preview.js?v=20261040"></script>
 </body>
 </html>

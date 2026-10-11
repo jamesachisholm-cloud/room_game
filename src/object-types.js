@@ -12,7 +12,10 @@ export const OBJECT_METADATA = {
   dog: { defaultValue: 25, name: 'dog', inventoryName: 'dog', pictureSubject: 'dog', mapMarker: 'D' },
   penny: { defaultValue: 1, name: 'penny', inventoryName: 'penny', pictureSubject: 'penny', mapMarker: '\u00a2' },
   fish: { defaultValue: 18, name: 'fish', inventoryName: 'fish', pictureSubject: 'fish', mapMarker: 'F' },
-  plant: { defaultValue: 12, name: 'plant', inventoryName: 'plant', pictureSubject: 'plant', mapMarker: 'P' }
+  plant: { defaultValue: 12, name: 'plant', inventoryName: 'plant', pictureSubject: 'plant', mapMarker: 'P' },
+  anvil: { defaultValue: 40, name: 'anvil', inventoryName: 'anvil', pictureSubject: 'anvil', mapMarker: 'N' },
+  clock: { defaultValue: 30, name: 'clock', inventoryName: 'clock', pictureSubject: 'clock', mapMarker: 'K' },
+  horseshoe: { defaultValue: 15, name: 'horseshoe', inventoryName: 'horseshoe', pictureSubject: 'horseshoe', mapMarker: 'U' }
 };
 
-export const SIMPLE_OBJECT_TYPES = ['h', 'snake', 'apple', 'telephone', 'glasses', 'toycar', 'dog', 'penny', 'fish', 'plant'];
+export const SIMPLE_OBJECT_TYPES = ['h', 'snake', 'apple', 'telephone', 'glasses', 'toycar', 'dog', 'penny', 'fish', 'plant', 'anvil', 'clock', 'horseshoe'];

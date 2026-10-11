@@ -1,4 +1,4 @@
-import { OBJECT_METADATA } from './object-types.js?v=20261038';
+import { OBJECT_METADATA } from './object-types.js?v=20261039';
 
 const COMPASS_LABELS = { 0: 'N', 45: 'NE', 90: 'E', 135: 'SE', 180: 'S', 225: 'SW', 270: 'W', 315: 'NW' };
 const COMPASS_PX_PER_DEGREE = 3;
