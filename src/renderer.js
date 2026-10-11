@@ -6,6 +6,14 @@ const OBJECT_RANGE = 50;
 const STROKE_LEVELS = 32;
 const WALL_HEIGHT = 1;
 const DOOR_HEIGHT = WALL_HEIGHT;
+const DOOR_GLYPHS = {
+  A: [[[0, 0], [.5, 1], [1, 0]], [[.22, .42], [.78, .42]]],
+  B: [[[0, 0], [0, 1], [.62, 1], [.82, .88], [.82, .66], [.62, .52], [0, .52]], [[.62, .52], [.82, .36], [.82, .12], [.62, 0], [0, 0]]],
+  C: [[[.9, .9], [.7, 1], [.2, 1], [0, .8], [0, .2], [.2, 0], [.7, 0], [.9, .1]]],
+  D: [[[0, 0], [0, 1], [.58, 1], [.85, .8], [.85, .2], [.58, 0], [0, 0]]],
+  E: [[[.9, 1], [0, 1], [0, 0], [.9, 0]], [[0, .5], [.72, .5]]],
+  F: [[[0, 0], [0, 1], [.9, 1]], [[0, .5], [.72, .5]]]
+};
 const FOV = Math.PI / 3;
 const BUILDING_HUES = { A: 168, B: 190, C: 148, D: 208, E: 128, F: 280 };
 // Map north is -y, so angles are measured from +x (east) towards +y (south).
@@ -65,6 +73,7 @@ export function createRenderer(canvas, world) {
   let horizon = 0;
   let focal = 1;
   let skyGradient = null;
+  let groundGradient = null;
   let buildingFinishes = [];
   let moonSprites = [];
   let cloudSprites = [];
@@ -113,12 +122,18 @@ export function createRenderer(canvas, world) {
     skyGradient = context.createLinearGradient(0, 0, 0, horizon);
     skyGradient.addColorStop(0, '#0d1c1a');
     skyGradient.addColorStop(1, '#1c3835');
+    groundGradient = context.createLinearGradient(0, horizon, 0, height);
+    groundGradient.addColorStop(0, '#030908');
+    groundGradient.addColorStop(1, '#1b302d');
     buildingFinishes = buildings.map((building, index) => {
       const hue = buildingHues[index + 1];
       const ceiling = context.createLinearGradient(0, 0, 0, horizon);
-      ceiling.addColorStop(0, `hsl(${hue},30%,11%)`);
-      ceiling.addColorStop(1, `hsl(${hue},32%,16%)`);
-      return { ceiling, floor: `hsl(${hue},30%,14%)` };
+      ceiling.addColorStop(0, `hsl(${hue},30%,20%)`);
+      ceiling.addColorStop(1, `hsl(${hue},30%,13%)`);
+      const floor = context.createLinearGradient(0, horizon, 0, height);
+      floor.addColorStop(0, `hsl(${hue},30%,13%)`);
+      floor.addColorStop(1, `hsl(${hue},30%,20%)`);
+      return { ceiling, floor };
     });
     moonSprites = [];
     cloudSprites = [];
@@ -167,7 +182,7 @@ export function createRenderer(canvas, world) {
     const playerBuilding = world.getRoomAt(player.x, player.y)?.building;
     const cosA = Math.cos(player.a);
     const sinA = Math.sin(player.a);
-    context.fillStyle = '#081412';
+    context.fillStyle = groundGradient;
     context.fillRect(0, 0, width, height);
     context.fillStyle = skyGradient;
     context.fillRect(0, 0, width, horizon);
@@ -259,7 +274,7 @@ export function createRenderer(canvas, world) {
         context.drawImage(sprite.canvas, width / 2 + focal * Math.tan(offset) - sprite.width / 2, horizon * (1 - cloud.height) - sprite.height / 2, sprite.width, sprite.height);
       });
     }
-    context.fillStyle = '#101d1a';
+    context.fillStyle = groundGradient;
     context.fillRect(0, horizon, width, height - horizon);
 
     const step = Math.max(2, Math.ceil(width / (rayCount * quality)));
@@ -357,7 +372,7 @@ export function createRenderer(canvas, world) {
         const doorDepth = door.distance * cosDelta;
         let visible = visibleDoors.get(door.id);
         if (!visible) {
-          visibleDoors.set(door.id, visible = { left: sx, right: sx + step, leftDepth: doorDepth, rightDepth: doorDepth, magic: world.magicDoorIds.has(door.id) });
+          visibleDoors.set(door.id, visible = { id: door.id, left: sx, right: sx + step, leftDepth: doorDepth, rightDepth: doorDepth, magic: world.magicDoorIds.has(door.id) });
         } else {
           if (sx < visible.left) {
             visible.left = sx;
@@ -499,6 +514,28 @@ export function createRenderer(canvas, world) {
       }
       context.stroke();
     }
+    function drawDoorGlyph(portal) {
+      const strokes = DOOR_GLYPHS[portal.target?.building?.[0]];
+      if (!strokes) return;
+      const horizontalX = portal.side === 'north' || portal.side === 'south';
+      const outwardX = portal.side === 'west' ? -1 : portal.side === 'east' ? 1 : 0;
+      const outwardY = portal.side === 'north' ? -1 : portal.side === 'south' ? 1 : 0;
+      const onOutside = (player.x - portal.x) * outwardX + (player.y - portal.y) * outwardY >= 0;
+      const faceDirection = onOutside ? 1 : -1;
+      const glyphDirection = (portal.side === 'north' || portal.side === 'east' ? -1 : 1) * faceDirection;
+      const style = { color: '#fff', width: 1.2 };
+      for (const stroke of strokes) {
+        const points = stroke.map(([x, y]) => {
+          const offset = (x - .5) * .09 * glyphDirection;
+          return {
+            x: portal.x + outwardX * .535 * faceDirection + (horizontalX ? offset : 0),
+            y: portal.y + outwardY * .535 * faceDirection + (horizontalX ? 0 : offset),
+            z: .56 + y * .08
+          };
+        });
+        drawProjectedPolyline(points, style, false, 3);
+      }
+    }
     const pathStyle = { color: 'rgba(114,255,208,.58)', width: 1.4 };
     function trimJunctionEnd(path, endpoint, otherEndpoint) {
       const crossing = world.paths.some(other => {
@@ -587,6 +624,7 @@ export function createRenderer(canvas, world) {
       context.lineTo(door.left, leftBottom);
       context.closePath();
       context.stroke();
+      if (door.magic) drawDoorGlyph(magicDoorById.get(door.id));
     }
     if (player.teleportFlash > 0) {
       const alpha = Math.min(.4, player.teleportFlash * 1.15);
