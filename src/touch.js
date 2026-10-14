@@ -6,7 +6,9 @@ export function setupTouchControls(controls, canvas) {
 
   const TAP_SLOP = 12;
   const TAP_MS = 400;
-  const LOOK_RADIANS_PER_PX = 0.006;
+  const LOOK_RADIANS_PER_PX = 0.0048;
+  // Taps above this fraction of the view height walk forward and taps below walk back.
+  const TAP_SPLIT = 0.75;
   let gesture = null;
   canvas.style.touchAction = 'none';
   canvas.addEventListener('pointerdown', event => {
@@ -29,7 +31,7 @@ export function setupTouchControls(controls, canvas) {
     const rect = canvas.getBoundingClientRect();
     controls.walkToScreenPoint(
       (event.clientX - rect.left - rect.width / 2) / rect.width,
-      (event.clientY - rect.top - rect.height / 2) / rect.width
+      (event.clientY - rect.top - rect.height * TAP_SPLIT) / rect.width
     );
   });
   canvas.addEventListener('pointercancel', event => {

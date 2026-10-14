@@ -65,7 +65,7 @@ export function setupHud(canvas, controls) {
       const actionHint = touchMode ? 'PICK UP / DROP buttons' : 'E pick up · 1–9/0 select · G drop';
       const actionPrompt = player.actionMessageTimer > 0
         ? `${player.actionMessage} · ${actionHint}`
-        : touchMode ? 'Arrow buttons move and turn · PICK UP / DROP buttons' : 'WASD move · mouse look · E pick up · 1–9/0 select · G drop';
+        : touchMode ? 'Tap to walk forward/back · swipe to look · PICK UP / DROP buttons' : 'WASD move · mouse look · E pick up · 1–9/0 select · G drop';
       const carriedCount = player.inventory.filter(Boolean).length;
       creditsLabel.textContent = String(player.credits);
       if (player.creditFlashId !== lastCreditFlashId) {

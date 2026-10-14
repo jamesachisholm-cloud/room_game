@@ -13,7 +13,7 @@ export function attachPlayerControls(player, canvas, world) {
   let touchTurn = 0;
   let walkTarget = null;
   const VIEW_FOV = Math.PI / 3; // must match renderer FOV
-  const TAP_WALK_CELLS_PER_WIDTH = 8;
+  const TAP_WALK_CELLS_PER_WIDTH = 16;
 
   function setMessage(message) {
     player.actionMessage = message;
@@ -240,7 +240,7 @@ export function attachPlayerControls(player, canvas, world) {
       teleportAtMagicDoor();
     },
     walkToScreenPoint(offsetX, offsetY) {
-      // Offsets are from screen center, in canvas widths. Above the mid line walks forward, below walks back, in proportion to the offset.
+      // Offsets are from the tap split line (a quarter up from the bottom), in canvas widths. Above it walks forward, below walks back, in proportion to the offset.
       const focal = 1 / (2 * Math.tan(VIEW_FOV / 2));
       const bearing = player.a + Math.atan(offsetX / focal);
       const direction = offsetY < 0 ? 1 : -1;
