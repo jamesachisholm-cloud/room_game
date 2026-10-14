@@ -27,6 +27,15 @@ The inventory holds up to 10 objects. Drop an object in a room with its matching
 
 Open [map.html](map.html) for a visual map and the map syntax guide. Edit [maps/world.map](maps/world.map), then refresh the map page or game. Each bay is 7 × 7 map units; repeated room IDs join connected bays into a room. The plan defines rooms, doors, exits, objects, building connections, and junction paths.
 
+## Object and picture placement rules
+
+Apply these whenever objects or pictures in [maps/world.map](maps/world.map) are added or moved (buildings A–D):
+
+- At most one item (object or picture) per room.
+- An object and its matching picture go in different buildings.
+- Place objects in room corners (`1.6` or `5.4` within the bay), away from doorways.
+- Never place a picture on a door, exit, or magic door; keep at least 0.8 map units from the opening and otherwise use the wall offset closest to the centre (`3.5`).
+
 ## Project layout
 
 - `src/main.js`: starts the game and coordinates each frame

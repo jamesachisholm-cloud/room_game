@@ -33,16 +33,17 @@ magicdoors
 magicdoor north 04 A-B
 magicdoor north 03 A-D
 objects
-picture guitar 0 0 north 3.5 0.18 0.68 0.58
-box 2 0 5.4 1.6 0.9 0.9 0.55 5
-h 3 0 5.4 1.6 0.34 15
-picture snake 4 0 south 3.5 0.18 0.68 0.58
-anvil 4 0 3.5 3.5 0.48 40
-picture anvil 4 0 east 3.5 0.18 0.68 0.58
-glasses 0 1 1.6 1.6 0.34 25
-penny 2 1 5.4 1.6 0.28 1
-picture fish 4 1 north 3.5 0.18 0.68 0.58
-picture toycar 4 2 east 3.5 0.18 0.68 0.58
+picture toycar 0 0 south 2 0.18 0.68 0.58
+picture plant 2 0 east 2 0.18 0.68 0.58
+h 3 0 5.4 5.4 0.34 15
+penny 4 0 5.4 5.4 0.28 1
+picture snake 0 1 south 2 0.18 0.68 0.58
+guitar 2 1 1.6 5.4 0.48 25
+clock 3 1 1.6 1.6 0.42 30
+picture anvil 0 2 west 3.5 0.18 0.68 0.58
+picture horseshoe 2 2 south 2 0.18 0.68 0.58
+cat 3 2 1.6 5.4 0.25 20
+glasses 4 3 5.4 5.4 0.34 25
 end
 
 building B 6 4
@@ -66,14 +67,13 @@ magicdoors
 magicdoor south 06 A-B
 magicdoor east 04 B-D
 objects
-cat 0 0 1.6 1.6 0.25 20
-picture coffee-table 5 0 north 3.5 0.18 0.68 0.58
-apple 2 1 1.6 1.6 0.33 10
-picture telephone 5 1 north 3.5 0.18 0.68 0.58
-clock 4 2 3.5 3.5 0.42 30
-picture clock 5 2 east 3.5 0.18 0.68 0.58
-toycar 0 3 5.4 1.6 0.28 8
-picture dog 1 3 west 3.5 0.18 0.68 0.58
+picture box 4 0 south 3.5 0.18 0.68 0.58
+anvil 5 0 5.4 5.4 0.48 40
+picture coffee-table 2 1 north 3.5 0.18 0.68 0.58
+apple 4 2 1.6 5.4 0.33 10
+picture glasses 0 3 east 3.5 0.18 0.68 0.58
+picture cat 1 3 west 3.5 0.18 0.68 0.58
+plant 4 3 1.6 1.6 0.4 12
 end
 
 building C 6 4
@@ -97,15 +97,14 @@ exit west 04 20
 magicdoors
 magicdoor south 08 C-D
 objects
-table 0 0 1.7 1.7 1.05 0.72 0.46 15
-snake 5 0 5.4 1.6 0.32 20
-picture cat 5 1 east 3.5 0.18 0.68 0.58
-picture apple 0 2 north 3.5 0.18 0.68 0.58
-dog 4 2 5.4 1.6 0.34 25
-picture penny 5 2 south 3.5 0.18 0.68 0.58
-picture plant 1 3 south 3.5 0.18 0.68 0.58
-horseshoe 4 3 3.5 3.5 0.5 15
-picture horseshoe 4 3 south 3.5 0.18 0.68 0.58
+picture penny 0 0 west 3.5 0.18 0.68 0.58
+box 5 0 5.4 5.4 0.9 0.9 0.55 5
+picture dog 5 1 north 3.5 0.18 0.68 0.58
+picture h 4 2 east 2 0.18 0.68 0.58
+toycar 5 2 1.6 5.4 0.28 8
+fish 0 3 1.6 5.4 0.34 18
+picture telephone 2 3 south 3.5 0.18 0.68 0.58
+table 3 3 1.6 1.6 1.05 0.72 0.46 15
 end
 
 building D 6 4
@@ -132,13 +131,14 @@ magicdoor west 07 A-D
 magicdoor south 09 C-D
 magicdoor east 06 B-D
 objects
-guitar 0 0 1.6 1.6 0.48 25
-picture box 1 0 north 3.5 0.18 0.68 0.58
-telephone 2 0 5.4 1.6 0.34 30
-picture h 3 0 north 3.5 0.18 0.68 0.58
-picture glasses 4 0 north 5.5 0.18 0.68 0.58
-fish 0 1 5.4 5.4 0.34 18
-plant 4 1 5.4 1.6 0.4 12
+horseshoe 0 0 5.4 5.4 0.5 15
+snake 1 0 5.4 5.4 0.32 20
+picture apple 2 0 south 3.5 0.18 0.68 0.58
+dog 3 0 5.4 1.6 0.34 25
+picture fish 4 0 east 2 0.18 0.68 0.58
+telephone 5 0 5.4 5.4 0.34 30
+picture clock 0 1 west 2 0.18 0.68 0.58
+picture guitar 1 1 west 2 0.18 0.68 0.58
 end
 
 building E 3 4

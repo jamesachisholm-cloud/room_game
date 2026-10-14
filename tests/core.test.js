@@ -10,18 +10,19 @@ const mapUrl = new URL('../maps/world.map', import.meta.url);
 
 test('parses the current world plan and object defaults', async () => {
   const text = await readFile(mapUrl, 'utf8');
-  const plan = parsePlan(text.replace('cat 0 0 1.6 1.6 0.25 20', 'cat 0 0 1.6 1.6 0.25'));
+  const plan = parsePlan(text.replace(/^cat (\d+ \d+ [\d.]+ [\d.]+ 0\.25) 20$/m, 'cat $1'));
 
   assert.equal(plan.buildings.length, 6);
   assert.equal(plan.junctionPaths.length, 1);
-  assert.equal(plan.buildings.find(building => building.name === 'B').objects.find(object => object.type === 'cat').value, 20);
+  assert.equal(plan.buildings.flatMap(building => building.objects).find(object => object.type === 'cat').value, 20);
 
   for (const type of ['anvil', 'clock', 'horseshoe']) {
     const building = plan.buildings.find(candidate => candidate.objects.some(item => item.type === type));
     const object = building.objects.find(item => item.type === type);
-    const picture = building.objects.find(item => item.type === 'picture' && item.subject === type);
+    const pictureBuilding = plan.buildings.find(candidate => candidate.objects.some(item => item.type === 'picture' && item.subject === type));
+    const picture = pictureBuilding.objects.find(item => item.type === 'picture' && item.subject === type);
     assert.notEqual(building.name, 'E');
-    assert.equal(building.grid[object.row][object.col], building.grid[picture.row][picture.col]);
+    assert.notEqual(building.name, pictureBuilding.name);
     assert.ok(SIMPLE_OBJECT_TYPES.includes(type));
     assert.equal(OBJECT_METADATA[type].pictureSubject, type);
     assert.ok(makeSimpleObject(type, 0, 0, object.scale).lines.length > 0);
