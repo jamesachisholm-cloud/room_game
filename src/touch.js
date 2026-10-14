@@ -18,7 +18,7 @@ export function setupTouchControls(controls, canvas) {
     if (!gesture || event.pointerId !== gesture.id) return;
     if (!gesture.dragging && Math.hypot(event.clientX - gesture.startX, event.clientY - gesture.startY) > TAP_SLOP) gesture.dragging = true;
     if (!gesture.dragging) return;
-    controls.lookBy((event.clientX - gesture.x) * LOOK_RADIANS_PER_PX);
+    controls.lookBy(-(event.clientX - gesture.x) * LOOK_RADIANS_PER_PX);
     gesture.x = event.clientX;
   });
   canvas.addEventListener('pointerup', event => {

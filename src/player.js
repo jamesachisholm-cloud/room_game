@@ -13,6 +13,7 @@ export function attachPlayerControls(player, canvas, world) {
   let touchTurn = 0;
   let walkTarget = null;
   const VIEW_FOV = Math.PI / 3; // must match renderer FOV
+  const TAP_WALK_CELLS_PER_WIDTH = 8;
 
   function setMessage(message) {
     player.actionMessage = message;
@@ -239,13 +240,13 @@ export function attachPlayerControls(player, canvas, world) {
       teleportAtMagicDoor();
     },
     walkToScreenPoint(offsetX, offsetY) {
-      // Offsets are from screen center, in canvas widths; the horizon is at mid-height.
+      // Offsets are from screen center, in canvas widths. Above the mid line walks forward, below walks back, in proportion to the offset.
       const focal = 1 / (2 * Math.tan(VIEW_FOV / 2));
-      const angle = player.a + Math.atan(offsetX / focal);
-      const dirX = Math.cos(angle);
-      const dirY = Math.sin(angle);
-      let distance = 30;
-      if (offsetY > .005) distance = Math.min(distance, .5 * focal / offsetY * Math.hypot(1, offsetX / focal));
+      const bearing = player.a + Math.atan(offsetX / focal);
+      const direction = offsetY < 0 ? 1 : -1;
+      const dirX = Math.cos(bearing) * direction;
+      const dirY = Math.sin(bearing) * direction;
+      const distance = Math.abs(offsetY) * TAP_WALK_CELLS_PER_WIDTH;
       let reach = 0;
       while (reach < distance && !world.isWall(Math.floor(player.x + dirX * (reach + .05)), Math.floor(player.y + dirY * (reach + .05)))) reach += .05;
       reach = Math.min(reach, distance);
