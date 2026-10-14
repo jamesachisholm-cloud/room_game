@@ -278,6 +278,8 @@ export function createRenderer(canvas, world) {
     context.fillRect(0, horizon, width, height - horizon);
 
     const step = Math.max(2, Math.ceil(width / (rayCount * quality)));
+    // Edge strokes cover half of each column so wall brightness does not change when quality adapts.
+    const strokeWidth = step / 2;
     let hitCount = 0;
     const now = frameStart;
     const maxRaySteps = Math.min(mapWidth + mapHeight, COARSE_POINTER ? 250 : 400);
@@ -293,16 +295,6 @@ export function createRenderer(canvas, world) {
         : { color: 'rgba(114,255,208,.72)', width: 1.5 };
     };
     const visibleDoors = new Map();
-
-    context.lineWidth = 1;
-    context.strokeStyle = 'rgba(112,169,160,.18)';
-    context.beginPath();
-    for (let i = 1; i <= 12; i++) {
-      const ceilingY = horizon - horizon * (i / 13) ** 2;
-      context.moveTo(0, ceilingY);
-      context.lineTo(width, ceilingY);
-    }
-    context.stroke();
 
     for (let sx = 0; sx < width; sx += step) {
       const screenOffset = (sx - width / 2) / focal;
@@ -441,12 +433,12 @@ export function createRenderer(canvas, world) {
         context.fillStyle = magicDoorPanel ? '#24102e' : '#102421';
         context.fillRect(sx, panelTop, step + 1, panelHeight);
         context.fillStyle = magicDoorPanel ? 'rgba(224,112,255,.95)' : doorStrokes[Math.max(Math.round(.35 * STROKE_LEVELS), level)];
-        context.fillRect(sx, panelTop, 1, panelHeight);
+        context.fillRect(sx, panelTop, strokeWidth, panelHeight);
       } else {
         context.fillStyle = wallFills[owner];
         context.fillRect(sx, top, step + 1, wallHeight);
         context.fillStyle = wallStrokes[owner][level];
-        context.fillRect(sx, top, 1, wallHeight);
+        context.fillRect(sx, top, strokeWidth, wallHeight);
       }
     }
 
