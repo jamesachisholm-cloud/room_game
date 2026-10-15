@@ -110,6 +110,8 @@ export function createRenderer(canvas, world) {
   const wallShades = buildingHues.map(hue => Array.from({ length: STROKE_LEVELS + 1 }, (_, level) => `hsl(${hue},40%,${8 + level / STROKE_LEVELS * 24}%)`));
   const wallStrokes = buildingHues.map(hue => Array.from({ length: STROKE_LEVELS + 1 }, (_, level) => `hsla(${hue},55%,68%,${level / STROKE_LEVELS})`));
   const doorStrokes = Array.from({ length: STROKE_LEVELS + 1 }, (_, level) => `rgba(114,255,208,${level / STROKE_LEVELS})`);
+  const doorShades = Array.from({ length: STROKE_LEVELS + 1 }, (_, level) => `hsl(165,45%,${22 + level / STROKE_LEVELS * 22}%)`);
+  const magicDoorShades = Array.from({ length: STROKE_LEVELS + 1 }, (_, level) => `hsl(285,45%,${24 + level / STROKE_LEVELS * 22}%)`);
 
   function resize() {
     pixelRatio = Math.min(devicePixelRatio || 1, COARSE_POINTER ? 1.25 : 2);
@@ -441,7 +443,7 @@ export function createRenderer(canvas, world) {
       const kind = doorPanel ? (magicDoorPanel ? 2 : 1) : 0;
       const colTop = doorPanel ? bottom - Math.min(wallHeight, focal * DOOR_HEIGHT / distance) : top;
       const edgeColor = kind === 2 ? 'rgba(224,112,255,.95)' : kind === 1 ? doorStrokes[Math.max(Math.round(.35 * STROKE_LEVELS), level)] : wallStrokes[owner][level];
-      context.fillStyle = kind === 2 ? '#2e1640' : kind === 1 ? '#16352f' : wallShades[owner][level];
+      context.fillStyle = kind === 2 ? magicDoorShades[level] : kind === 1 ? doorShades[level] : wallShades[owner][level];
       const columnHeight = bottom - colTop;
       // Whole device pixels, so fractional scaling never leaves a see-through seam between columns.
       const left = Math.floor(sx * pixelRatio) / pixelRatio;
@@ -450,7 +452,7 @@ export function createRenderer(canvas, world) {
       const fillBottom = Math.ceil(bottom * pixelRatio) / pixelRatio;
       context.fillRect(left, fillTop, right - left, fillBottom - fillTop);
       const jump = Math.max(.6, Math.min(distance, prevDistance) * .25);
-      if (prevHit && (kind !== prevKind || side !== prevSide || Math.abs(distance - prevDistance) > jump)) {
+      if (prevHit && (kind !== prevKind || Math.abs(distance - prevDistance) > jump)) {
         const nearer = distance < prevDistance;
         const edgeTop = nearer ? colTop : prevTop;
         context.fillStyle = nearer ? edgeColor : prevColor;
