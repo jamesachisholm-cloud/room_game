@@ -84,6 +84,8 @@ export function createRenderer(canvas, world) {
   let previousTime = 0;
   const buildings = world.buildings;
   const hitPool = [];
+  let pathLines = null;
+  let outlineLines = null;
 
   // Flat lookup tables avoid string keys and nested arrays inside the ray loop.
   const mapWidth = world.width;
@@ -182,8 +184,6 @@ export function createRenderer(canvas, world) {
     const playerBuilding = world.getRoomAt(player.x, player.y)?.building;
     const cosA = Math.cos(player.a);
     const sinA = Math.sin(player.a);
-    context.fillStyle = groundGradient;
-    context.fillRect(0, 0, width, height);
     context.fillStyle = skyGradient;
     context.fillRect(0, 0, width, horizon);
     {
@@ -294,6 +294,15 @@ export function createRenderer(canvas, world) {
         : { color: 'rgba(114,255,208,.72)', width: 1.5 };
     };
     const visibleDoors = new Map();
+    const rayDoors = [];
+    // The previous column's wall, so a bright edge can be drawn wherever the surface changes.
+    let prevHit = false;
+    let prevKind = 0;
+    let prevSide = 0;
+    let prevDistance = 0;
+    let prevTop = 0;
+    let prevBottom = 0;
+    let prevColor = '';
 
     for (let sx = 0; sx < width; sx += step) {
       const screenOffset = (sx - width / 2) / focal;
@@ -315,7 +324,7 @@ export function createRenderer(canvas, world) {
       let wallHit = false;
       let doorPanel = false;
       let magicDoorPanel = false;
-      const rayDoors = [];
+      rayDoors.length = 0;
 
       for (let i = 0; i < maxRaySteps; i++) {
         if (sideX < sideY) {
@@ -419,27 +428,41 @@ export function createRenderer(canvas, world) {
       hit.distance = distance;
       hit.wallHit = wallHit;
       hitCount++;
-      if (!wallHit) continue;
+      if (!wallHit) {
+        prevHit = false;
+        continue;
+      }
       const wallHeight = Math.min(height * 1.8, focal * WALL_HEIGHT / distance);
       const top = horizon - wallHeight / 2;
       const bottom = horizon + wallHeight / 2;
       const alpha = Math.max(.2, .9 - distance * .0012 - (side ? .16 : 0));
       const level = Math.round(alpha * STROKE_LEVELS);
       const owner = buildingGrid[hitY * mapWidth + hitX];
-      if (doorPanel) {
-        const panelHeight = Math.min(wallHeight, focal * DOOR_HEIGHT / distance);
-        const panelTop = bottom - panelHeight;
-        context.fillStyle = magicDoorPanel ? '#24102e' : '#102421';
-        context.fillRect(sx, panelTop, step + 1, panelHeight);
-        context.fillStyle = magicDoorPanel ? 'rgba(224,112,255,.95)' : doorStrokes[Math.max(Math.round(.35 * STROKE_LEVELS), level)];
-        if (sx % 4 === 0) context.fillRect(sx, panelTop, 2, panelHeight);
-      } else {
-        context.fillStyle = wallShades[owner][level];
-        context.fillRect(sx, top, step + 1, wallHeight);
-        context.fillStyle = wallStrokes[owner][level];
-        context.fillRect(sx, top, step + 1, 1.5);
-        context.fillRect(sx, bottom - 1.5, step + 1, 1.5);
+      const kind = doorPanel ? (magicDoorPanel ? 2 : 1) : 0;
+      const colTop = doorPanel ? bottom - Math.min(wallHeight, focal * DOOR_HEIGHT / distance) : top;
+      const edgeColor = kind === 2 ? 'rgba(224,112,255,.95)' : kind === 1 ? doorStrokes[Math.max(Math.round(.35 * STROKE_LEVELS), level)] : wallStrokes[owner][level];
+      context.fillStyle = kind === 2 ? '#2e1640' : kind === 1 ? '#16352f' : wallShades[owner][level];
+      const columnHeight = bottom - colTop;
+      // Whole device pixels, so fractional scaling never leaves a see-through seam between columns.
+      const left = Math.floor(sx * pixelRatio) / pixelRatio;
+      const right = Math.ceil((sx + step + 1) * pixelRatio) / pixelRatio;
+      const fillTop = Math.floor(colTop * pixelRatio) / pixelRatio;
+      const fillBottom = Math.ceil(bottom * pixelRatio) / pixelRatio;
+      context.fillRect(left, fillTop, right - left, fillBottom - fillTop);
+      const jump = Math.max(.6, Math.min(distance, prevDistance) * .25);
+      if (prevHit && (kind !== prevKind || side !== prevSide || Math.abs(distance - prevDistance) > jump)) {
+        const nearer = distance < prevDistance;
+        const edgeTop = nearer ? colTop : prevTop;
+        context.fillStyle = nearer ? edgeColor : prevColor;
+        context.fillRect(sx - 1, edgeTop, 2, (nearer ? bottom : prevBottom) - edgeTop);
       }
+      prevHit = true;
+      prevKind = kind;
+      prevSide = side;
+      prevDistance = distance;
+      prevTop = colTop;
+      prevBottom = bottom;
+      prevColor = edgeColor;
     }
 
     // Polylines are projected with plain numbers (no per-point objects) so phones avoid garbage-collection stalls.
@@ -457,6 +480,11 @@ export function createRenderer(canvas, world) {
       context.strokeStyle = style.color;
       context.lineWidth = style.width;
       context.beginPath();
+      addProjectedPolyline(points, ignoreWalls, subdivisions);
+      context.stroke();
+    }
+    // Adds to the current path without stroking, so callers can batch many lines into one stroke.
+    function addProjectedPolyline(points, ignoreWalls, subdivisions) {
       for (let segment = 0; segment < points.length - 1; segment++) {
         const start = points[segment];
         const end = points[segment + 1];
@@ -504,7 +532,6 @@ export function createRenderer(canvas, world) {
           }
         }
       }
-      context.stroke();
     }
     function drawDoorGlyph(portal) {
       const strokes = DOOR_GLYPHS[portal.target?.building?.[0]];
@@ -538,7 +565,9 @@ export function createRenderer(canvas, world) {
       });
       return crossing ? endpoint + Math.sign(otherEndpoint - endpoint) * PATH_HALF_WIDTH : endpoint;
     }
-    for (const path of world.paths) {
+    pathLines ??= (() => {
+      const lines = [];
+      for (const path of world.paths) {
       for (const offset of [-PATH_HALF_WIDTH, PATH_HALF_WIDTH]) {
         const from = trimJunctionEnd(path, path.from, path.to);
         const to = trimJunctionEnd(path, path.to, path.from);
@@ -553,10 +582,19 @@ export function createRenderer(canvas, world) {
           const y = path.axis === 'x' ? path.fixed + offset : value;
           points.push({ x, y, z: 0 });
         }
-        drawProjectedPolyline(points, pathStyle, false, 1);
+        lines.push(points);
       }
-    }
+      }
+      return lines;
+    })();
+    context.strokeStyle = pathStyle.color;
+    context.lineWidth = pathStyle.width;
+    context.beginPath();
+    for (const points of pathLines) addProjectedPolyline(points, false, 1);
+    context.stroke();
     if (!playerBuilding) {
+      outlineLines ??= (() => {
+      const lines = [];
       for (const building of world.buildings) {
         const corners = [[building.x, building.y], [building.x + building.w, building.y], [building.x + building.w, building.y + building.h], [building.x, building.y + building.h]];
         for (const z of [0, WALL_HEIGHT]) {
@@ -565,11 +603,18 @@ export function createRenderer(canvas, world) {
             const [x2, y2] = corners[(index + 1) % 4];
             const count = Math.ceil(Math.hypot(x2 - x1, y2 - y1) / 4);
             const points = Array.from({ length: count + 1 }, (_, step) => ({ x: x1 + (x2 - x1) * step / count, y: y1 + (y2 - y1) * step / count, z }));
-            drawProjectedPolyline(points, pathStyle, false, 1);
+            lines.push(points);
           }
         }
-        for (const [x, y] of corners) drawProjectedPolyline([{ x, y, z: 0 }, { x, y, z: WALL_HEIGHT }], pathStyle, false, 4);
+        for (const [x, y] of corners) lines.push([{ x, y, z: 0 }, { x, y, z: WALL_HEIGHT }]);
       }
+      return lines;
+      })();
+      context.strokeStyle = pathStyle.color;
+      context.lineWidth = pathStyle.width;
+      context.beginPath();
+      for (const points of outlineLines) addProjectedPolyline(points, false, points.length === 2 ? 4 : 1);
+      context.stroke();
     }
     const objectLineStyle = { color: 'rgba(114,255,208,.72)', width: 1.5 };
     // Objects beyond this range are too small to see and are skipped.
@@ -583,13 +628,19 @@ export function createRenderer(canvas, world) {
         }
       }
       const edges = [[0,1],[0,2],[1,3],[2,3],[4,5],[4,6],[5,7],[6,7],[0,4],[1,5],[2,6],[3,7]];
-      for (const [a, b] of edges) {
-        drawProjectedPolyline([corners[a], corners[b]], lineStyle, ignoreWalls);
-      }
+      context.strokeStyle = lineStyle.color;
+      context.lineWidth = lineStyle.width;
+      context.beginPath();
+      for (const [a, b] of edges) addProjectedPolyline([corners[a], corners[b]], ignoreWalls, 10);
+      context.stroke();
     }
     function drawWireObject(cat, ignoreWalls = false, lineStyle = objectLineStyle) {
       for (const part of cat.cuboids ?? []) drawCuboid(part, ignoreWalls, lineStyle);
-      for (const line of cat.lines) drawProjectedPolyline(line, lineStyle, ignoreWalls);
+      context.strokeStyle = lineStyle.color;
+      context.lineWidth = lineStyle.width;
+      context.beginPath();
+      for (const line of cat.lines) addProjectedPolyline(line, ignoreWalls, 10);
+      context.stroke();
     }
     for (const box of world.boxes) if (!box.held && isNear(box)) drawCuboid(box, false, objectStyle(box));
     for (const table of world.tables) if (!table.held && isNear(table)) for (const part of table.parts) drawCuboid(part, false, objectStyle(table));
@@ -599,7 +650,11 @@ export function createRenderer(canvas, world) {
     for (const picture of world.pictures) {
       if (!isNear(picture)) continue;
       const lineStyle = objectStyle(picture);
-      for (const line of picture.lines) drawProjectedPolyline(line, lineStyle);
+      context.strokeStyle = lineStyle.color;
+      context.lineWidth = lineStyle.width;
+      context.beginPath();
+      for (const line of picture.lines) addProjectedPolyline(line, false, 10);
+      context.stroke();
     }
 
     for (const door of visibleDoors.values()) {
