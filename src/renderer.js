@@ -105,7 +105,7 @@ export function createRenderer(canvas, world) {
   });
   // Style strings are built once; index 0 is the default look for walls outside any building.
   const buildingHues = [168, ...buildings.map(building => BUILDING_HUES[building.name] ?? 168)];
-  const wallFills = buildingHues.map(hue => `hsl(${hue},40%,10%)`);
+  const wallShades = buildingHues.map(hue => Array.from({ length: STROKE_LEVELS + 1 }, (_, level) => `hsl(${hue},40%,${8 + level / STROKE_LEVELS * 24}%)`));
   const wallStrokes = buildingHues.map(hue => Array.from({ length: STROKE_LEVELS + 1 }, (_, level) => `hsla(${hue},55%,68%,${level / STROKE_LEVELS})`));
   const doorStrokes = Array.from({ length: STROKE_LEVELS + 1 }, (_, level) => `rgba(114,255,208,${level / STROKE_LEVELS})`);
 
@@ -277,9 +277,8 @@ export function createRenderer(canvas, world) {
     context.fillStyle = groundGradient;
     context.fillRect(0, horizon, width, height - horizon);
 
-    const step = Math.max(2, Math.ceil(width / (rayCount * quality)));
-    // Edge strokes cover half of each column so wall brightness does not change when quality adapts.
-    const strokeWidth = step / 2;
+    // Rays are 2px or 4px apart; strokes are always 2px every 4px, so the wall pattern is identical at both.
+    const step = Math.ceil(width / (rayCount * quality)) <= 2 ? 2 : 4;
     let hitCount = 0;
     const now = frameStart;
     const maxRaySteps = Math.min(mapWidth + mapHeight, COARSE_POINTER ? 250 : 400);
@@ -424,7 +423,7 @@ export function createRenderer(canvas, world) {
       const wallHeight = Math.min(height * 1.8, focal * WALL_HEIGHT / distance);
       const top = horizon - wallHeight / 2;
       const bottom = horizon + wallHeight / 2;
-      const alpha = Math.max(.13, .72 - distance * .0012 - (side ? .16 : 0));
+      const alpha = Math.max(.2, .9 - distance * .0012 - (side ? .16 : 0));
       const level = Math.round(alpha * STROKE_LEVELS);
       const owner = buildingGrid[hitY * mapWidth + hitX];
       if (doorPanel) {
@@ -433,12 +432,13 @@ export function createRenderer(canvas, world) {
         context.fillStyle = magicDoorPanel ? '#24102e' : '#102421';
         context.fillRect(sx, panelTop, step + 1, panelHeight);
         context.fillStyle = magicDoorPanel ? 'rgba(224,112,255,.95)' : doorStrokes[Math.max(Math.round(.35 * STROKE_LEVELS), level)];
-        context.fillRect(sx, panelTop, strokeWidth, panelHeight);
+        if (sx % 4 === 0) context.fillRect(sx, panelTop, 2, panelHeight);
       } else {
-        context.fillStyle = wallFills[owner];
+        context.fillStyle = wallShades[owner][level];
         context.fillRect(sx, top, step + 1, wallHeight);
         context.fillStyle = wallStrokes[owner][level];
-        context.fillRect(sx, top, strokeWidth, wallHeight);
+        context.fillRect(sx, top, step + 1, 1.5);
+        context.fillRect(sx, bottom - 1.5, step + 1, 1.5);
       }
     }
 
