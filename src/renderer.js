@@ -117,13 +117,13 @@ export function createRenderer(canvas, world) {
     const [x, y] = cell.split(',').map(Number);
     doorGrid[y * mapWidth + x] = doorId;
   }
-  buildings.forEach((building, index) => {
-    for (let y = building.y; y < building.y + building.h; y++) {
-      buildingGrid.fill(index + 1, y * mapWidth + building.x, y * mapWidth + building.x + building.w);
+  roofedAreas.forEach((area, index) => {
+    for (let y = area.y; y < area.y + area.h; y++) {
+      buildingGrid.fill(index + 1, y * mapWidth + area.x, y * mapWidth + area.x + area.w);
     }
   });
   // Style strings are built once; index 0 is the default look for walls outside any building.
-  const buildingHues = [168, ...buildings.map(building => BUILDING_HUES[building.name] ?? 168)];
+  const buildingHues = [168, ...roofedAreas.map(area => BUILDING_HUES[area.name] ?? 168)];
   const wallShades = buildingHues.map(hue => Array.from({ length: STROKE_LEVELS + 1 }, (_, level) => `hsl(${hue},40%,${8 + level / STROKE_LEVELS * 24}%)`));
   const wallStrokes = buildingHues.map(hue => Array.from({ length: STROKE_LEVELS + 1 }, (_, level) => `hsla(${hue},55%,68%,${level / STROKE_LEVELS})`));
   const doorStrokes = Array.from({ length: STROKE_LEVELS + 1 }, (_, level) => `rgba(114,255,208,${level / STROKE_LEVELS})`);
@@ -642,7 +642,7 @@ export function createRenderer(canvas, world) {
     if (!playerBuilding) {
       outlineLines ??= (() => {
       const lines = [];
-      for (const building of world.buildings) {
+      for (const building of roofedAreas) {
         const corners = [[building.x, building.y], [building.x + building.w, building.y], [building.x + building.w, building.y + building.h], [building.x, building.y + building.h]];
         for (const z of [0, WALL_HEIGHT]) {
           for (let index = 0; index < 4; index++) {

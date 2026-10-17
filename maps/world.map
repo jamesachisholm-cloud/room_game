@@ -187,6 +187,5 @@ B south C north corridor
 C west D east
 D north A south corridor
 
-# The central building's spoke meets a ring path at a T junction.
+# Optional extra paths: path <building> <side> <target>. None are defined right now.
 paths
-path E north 22.5
