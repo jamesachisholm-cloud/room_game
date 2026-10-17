@@ -98,6 +98,8 @@ export function createRenderer(canvas, world) {
   let framesSinceAdjust = 0;
   let previousTime = 0;
   const buildings = world.buildings;
+  // Corridors get a floor and ceiling just like buildings do.
+  const roofedAreas = [...buildings, ...world.corridors];
   const hitPool = [];
   let pathLines = null;
   let outlineLines = null;
@@ -144,8 +146,8 @@ export function createRenderer(canvas, world) {
     groundGradient = context.createLinearGradient(0, horizon, 0, height);
     groundGradient.addColorStop(0, '#030908');
     groundGradient.addColorStop(1, '#1b302d');
-    buildingFinishes = buildings.map((building, index) => {
-      const hue = buildingHues[index + 1];
+    buildingFinishes = roofedAreas.map((area, index) => {
+      const hue = buildingHues[index + 1] ?? 168;
       const ceiling = context.createLinearGradient(0, 0, 0, horizon);
       ceiling.addColorStop(0, `hsl(${hue},30%,20%)`);
       ceiling.addColorStop(1, `hsl(${hue},30%,13%)`);
@@ -402,8 +404,8 @@ export function createRenderer(canvas, world) {
         }
       }
 
-      for (let buildingIndex = 0; buildingIndex < buildings.length; buildingIndex++) {
-        const building = buildings[buildingIndex];
+      for (let buildingIndex = 0; buildingIndex < roofedAreas.length; buildingIndex++) {
+        const building = roofedAreas[buildingIndex];
         let tMin = -Infinity;
         let tMax = Infinity;
         if (Math.abs(rayX) < 1e-9) {

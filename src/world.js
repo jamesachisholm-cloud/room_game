@@ -1,11 +1,11 @@
-import { loadPlan, roomIdsIn } from './map-plan.js?v=20261056';
+import { loadPlan, roomIdsIn } from './map-plan.js?v=20261084';
 import { makeCat, makeGuitar, makeSimpleObject, makeWallPicture } from './object-geometry.js?v=20261056';
 import { hasClearFootprint } from './placement.js?v=20261038';
 import { SIMPLE_OBJECT_TYPES } from './object-types.js?v=20261039';
 import { SIZE } from './world-constants.js?v=20261038';
 
 export { CELL_FT, SIZE } from './world-constants.js?v=20261038';
-export { parsePlan } from './map-plan.js?v=20261056';
+export { parsePlan } from './map-plan.js?v=20261084';
 
 const PAD = 12;
 const ROOM_LENGTHS = 10;
@@ -254,12 +254,32 @@ export async function createWorld() {
       if (firstCell.y !== secondCell.y) throw new Error('East/west linked exits must line up on the same row.');
       const edgeX = building => connection.fromSide === 'east' ? building.x + building.w : building.x;
       const otherEdgeX = building => connection.toSide === 'east' ? building.x + building.w : building.x;
-      return { axis: 'x', from: edgeX(firstBuilding), to: otherEdgeX(secondBuilding), fixed: firstCell.y + .5 };
+      return { axis: 'x', from: edgeX(firstBuilding), to: otherEdgeX(secondBuilding), fixed: firstCell.y + .5, corridor: connection.corridor };
     }
     if (firstCell.x !== secondCell.x) throw new Error('North/south linked exits must line up on the same column.');
     const edgeY = (building, side) => side === 'south' ? building.y + building.h : building.y;
-    return { axis: 'y', from: edgeY(firstBuilding, connection.fromSide), to: edgeY(secondBuilding, connection.toSide), fixed: firstCell.x + .5 };
+    return { axis: 'y', from: edgeY(firstBuilding, connection.fromSide), to: edgeY(secondBuilding, connection.toSide), fixed: firstCell.x + .5, corridor: connection.corridor };
   });
+  // A corridor is a door-wide path with solid wall cells on both sides and a ceiling over it.
+  const corridors = [];
+  for (const path of paths) {
+    if (!path.corridor) continue;
+    const low = Math.min(path.from, path.to);
+    const high = Math.max(path.from, path.to);
+    const lane = Math.floor(path.fixed);
+    for (let along = low; along < high; along++) {
+      if (path.axis === 'x') {
+        map[lane - 1][along] = 1;
+        map[lane + 1][along] = 1;
+      } else {
+        map[along][lane - 1] = 1;
+        map[along][lane + 1] = 1;
+      }
+    }
+    corridors.push(path.axis === 'x'
+      ? { x: low, y: lane - 1, w: high - low, h: 3 }
+      : { x: lane - 1, y: low, w: 3, h: high - low });
+  }
   for (const route of plan.junctionPaths) {
     const building = placed[route.building];
     const exit = building?.exits.find(candidate => candidate.side === route.side);
@@ -270,6 +290,24 @@ export async function createWorld() {
     else if (route.side === 'west') paths.push({ axis: 'x', from: route.target, to: building.x, fixed: cell.y + .5 });
     else if (route.side === 'east') paths.push({ axis: 'x', from: building.x + building.w, to: route.target, fixed: cell.y + .5 });
     else throw new Error(`Junction path has an invalid side: ${route.side}`);
+  }
+  // A path that ends in a corridor lane needs a doorway through the corridor wall.
+  for (const path of paths) {
+    if (path.corridor || path.axis === undefined) continue;
+    for (const corridor of corridors) {
+      const lane = corridor.w > corridor.h ? corridor.y + 1 : corridor.x + 1;
+      const corridorAlongX = corridor.w > corridor.h;
+      if (corridorAlongX === (path.axis === 'x')) continue;
+      const end = [path.from, path.to].find(value => Math.floor(value) === lane);
+      if (end === undefined) continue;
+      const cross = Math.floor(path.fixed);
+      const start = corridorAlongX ? corridor.x : corridor.y;
+      if (cross < start || cross >= start + (corridorAlongX ? corridor.w : corridor.h)) continue;
+      const otherEnd = end === path.from ? path.to : path.from;
+      const wall = lane + Math.sign(otherEnd - end);
+      if (corridorAlongX) map[wall][cross] = 0;
+      else map[cross][wall] = 0;
+    }
   }
 
   const boxes = [];
@@ -333,7 +371,7 @@ export async function createWorld() {
     roomCount: roomCountByBuilding.get(building.name)
   }));
   return {
-    buildings, buildingPlans, map, doors, paths, boxes, tables, guitars, wireObjects, pictures, cat, pickups, magicDoors, magicDoorIds, width, height, start,
+    buildings, buildingPlans, map, doors, paths, corridors, boxes, tables, guitars, wireObjects, pictures, cat, pickups, magicDoors, magicDoorIds, width, height, start,
     moveObject(object, x, y) {
       const dx = x - object.x;
       const dy = y - object.y;

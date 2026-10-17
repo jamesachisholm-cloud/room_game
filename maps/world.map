@@ -5,6 +5,7 @@
 # Wall picture format: picture <box|cat|dog|guitar|coffee-table|h|snake|apple|telephone|glasses|penny|fish|plant|toycar|anvil|clock|horseshoe> <bay-col> <bay-row> <side> <offset> <bottom-z> <width> <height>.
 # Magic door format: magicdoor <side> <room-ID> <pair-ID> [toll]. A toll is a one-time credit charge for the pair.
 # Coffee table format: table <bay-col> <bay-row> <x> <y> <width> <depth> <height>.
+# Connection format: <building> <side> <building> <side> [corridor]. Adding corridor encloses that path with walls and a ceiling, one door wide.
 
 building A 5 4
 rooms
@@ -181,10 +182,10 @@ objects
 end
 
 connections
-A east B west
-B south C north
+A east B west corridor
+B south C north corridor
 C west D east
-D north A south
+D north A south corridor
 
 # The central building's spoke meets a ring path at a T junction.
 paths

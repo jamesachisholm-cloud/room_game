@@ -101,7 +101,7 @@ export function parsePlan(text) {
     } else if (section === 'objects' && current && parts[0] === 'picture') {
       current.objects.push({ type: 'picture', subject: parts[1], col: Number(parts[2]), row: Number(parts[3]), side: parts[4], offset: Number(parts[5]), z: Number(parts[6]), w: Number(parts[7]), h: Number(parts[8]) });
     } else if (section === 'connections') {
-      connections.push({ fromBuilding: parts[0], fromSide: parts[1], toBuilding: parts[2], toSide: parts[3] });
+      connections.push({ fromBuilding: parts[0], fromSide: parts[1], toBuilding: parts[2], toSide: parts[3], corridor: parts[4] === 'corridor' });
     } else if (section === 'paths' && parts[0] === 'path') {
       junctionPaths.push({ building: parts[1], side: parts[2], target: Number(parts[3]) });
     } else {
