@@ -37,10 +37,10 @@ picture toycar 0 0 south 2 0.18 0.68 0.58
 picture plant 2 0 east 2 0.18 0.68 0.58
 h 3 0 5.4 5.4 0.34 15
 penny 4 0 5.4 5.4 0.28 1
-picture snake 0 1 south 2 0.18 0.68 0.58
+picture snake 1 1 east 3.5 0.18 0.68 0.58
 guitar 2 1 1.6 5.4 0.48 25
 clock 3 1 1.6 1.6 0.42 30
-picture anvil 0 2 west 3.5 0.18 0.68 0.58
+picture anvil 0 3 south 3.5 0.18 0.68 0.58
 picture horseshoe 2 2 south 2 0.18 0.68 0.58
 cat 3 2 1.6 5.4 0.25 20
 glasses 4 3 5.4 5.4 0.34 25
