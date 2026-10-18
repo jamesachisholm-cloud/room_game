@@ -709,6 +709,38 @@ export function createRenderer(canvas, world) {
       context.stroke();
     }
 
+    const robber = world.robber;
+    if (robber) {
+      const towardX = player.x - robber.x;
+      const towardY = player.y - robber.y;
+      const distance = Math.hypot(towardX, towardY) || 1;
+      const sideX = -towardY / distance;
+      const sideY = towardX / distance;
+      const ghostLines = [
+        [[-.18, 1.82], [-.12, 1.96], [0, 2.02], [.12, 1.96], [.18, 1.82], [.16, 1.68], [0, 1.62], [-.16, 1.68], [-.18, 1.82]],
+        [[-.1, 1.65], [-.21, 1.52], [-.24, 1.2], [-.34, .83], [-.23, .67], [-.12, .84], [0, .72], [.12, .84], [.23, .67], [.34, .83], [.24, 1.2], [.21, 1.52], [.1, 1.65]],
+        [[-.2, 1.48], [-.39, 1.26], [-.42, 1.04]],
+        [[.2, 1.48], [.39, 1.26], [.42, 1.04]],
+        [[-.12, .84], [-.18, .55], [-.27, .28], [-.38, .12]],
+        [[.12, .84], [.18, .55], [.27, .28], [.38, .12]],
+        [[-.08, 1.82], [-.025, 1.82]],
+        [[.025, 1.82], [.08, 1.82]]
+      ];
+      const ghostPoint = ([horizontal, z]) => ({
+        x: robber.x + sideX * horizontal,
+        y: robber.y + sideY * horizontal,
+        z
+      });
+      context.save();
+      context.globalAlpha = .62 + Math.sin(now * .003) * .08;
+      context.strokeStyle = 'rgba(170,220,255,.75)';
+      context.lineWidth = 1.7;
+      context.beginPath();
+      for (const line of ghostLines) addProjectedPolyline(line.map(ghostPoint), false, 5);
+      context.stroke();
+      context.restore();
+    }
+
     for (const door of visibleDoors.values()) {
       const leftBottom = horizon + focal * WALL_HEIGHT / (2 * door.leftDepth);
       const rightBottom = horizon + focal * WALL_HEIGHT / (2 * door.rightDepth);

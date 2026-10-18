@@ -1,12 +1,14 @@
 import { CELL_FT } from './world.js?v=20261085';
 import { OBJECT_METADATA } from './object-types.js?v=20261039';
 import { hasClearFootprint } from './placement.js?v=20261038';
+import { createRobber, stealInventoryObject, updateRobber } from './robber.js?v=20261089';
 
 export function createPlayer(start) {
   return { ...start, credits: 0, creditFlashId: 0, inventory: Array(10).fill(null), selectedInventorySlot: 0 };
 }
 
 export function attachPlayerControls(player, canvas, world) {
+  world.robber = createRobber(world);
   const keysDown = new Set();
   const movementKeys = ['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'];
   const touchMove = { x: 0, y: 0 };
@@ -238,6 +240,14 @@ export function attachPlayerControls(player, canvas, world) {
       if (!world.isWall(Math.floor(player.x), Math.floor(player.y + dy + Math.sign(dy) * radius))) player.y += dy;
       if (walkTarget && Math.hypot(player.x - beforeX, player.y - beforeY) < speed * .25) walkTarget = null;
       teleportAtMagicDoor();
+      updateRobber(world.robber, world, player, dt, () => {
+        if (!stealInventoryObject(world, player)) {
+          setMessage('The robber reaches for you, but your inventory is empty');
+          return false;
+        }
+        setMessage('The robber stole an object and sent it to a random room in Building E');
+        return true;
+      });
     },
     walkToScreenPoint(offsetX, offsetY) {
       // Offsets are from the tap split line (a quarter up from the bottom), in canvas widths. Above it walks forward, below walks back, in proportion to the offset.
