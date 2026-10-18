@@ -131,7 +131,9 @@ export function createRenderer(canvas, world) {
   const magicDoorShades = Array.from({ length: STROKE_LEVELS + 1 }, (_, level) => `hsl(285,45%,${24 + level / STROKE_LEVELS * 22}%)`);
 
   function resize() {
-    pixelRatio = Math.min(devicePixelRatio || 1, COARSE_POINTER ? 1.25 : 2);
+    // A 2x backing canvas quadruples the pixels painted each frame. Capping
+    // desktop rendering at 1.5x keeps the image sharp while reducing that work.
+    pixelRatio = Math.min(devicePixelRatio || 1, 1.5);
     width = innerWidth;
     height = innerHeight;
     horizon = height * .5;
