@@ -297,7 +297,10 @@ export function createRenderer(canvas, world) {
     context.fillRect(0, horizon, width, height - horizon);
 
     // Rays are 2px or 4px apart; strokes are always 2px every 4px, so the wall pattern is identical at both.
-    const step = Math.ceil(width / (rayCount * quality)) <= 2 ? 2 : 4;
+    // Scale ray spacing continuously with the adaptive quality setting. The old
+    // 2-or-4 step jumped straight to half the rays, and only after quality had
+    // already fallen very low.
+    const step = Math.max(2, Math.min(4, Math.ceil(width / (rayCount * quality))));
     let hitCount = 0;
     const now = frameStart;
     const maxRaySteps = Math.min(mapWidth + mapHeight, COARSE_POINTER ? 250 : 400);
