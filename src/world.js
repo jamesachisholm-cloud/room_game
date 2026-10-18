@@ -12,10 +12,19 @@ const ROOM_LENGTHS = 10;
 // Walking speed is about 3.1 cells per second, so 950 cells is roughly five minutes of walking.
 const FAR_DISTANCE = 950;
 
+function shuffle(items) {
+  for (let i = items.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [items[i], items[j]] = [items[j], items[i]];
+  }
+  return items;
+}
+
 function randomizeObjectPlacements(buildings, isWall) {
   const pictureRooms = new Set();
   const objects = [];
-  for (const building of buildings.filter(candidate => candidate.name !== 'E' && candidate.name !== 'F')) {
+  const eligibleBuildings = buildings.filter(building => ['A', 'B', 'C', 'D'].includes(building.name));
+  for (const building of eligibleBuildings) {
     for (const object of building.objects) {
       const room = building.grid[object.row][object.col];
       if (object.type === 'picture') pictureRooms.add(`${building.name}:${room}`);
@@ -24,7 +33,7 @@ function randomizeObjectPlacements(buildings, isWall) {
   }
 
   const rooms = [];
-  for (const building of buildings.filter(candidate => candidate.name !== 'E' && candidate.name !== 'F')) {
+  for (const building of eligibleBuildings) {
     for (const room of roomIdsIn(building.grid)) {
       if (!pictureRooms.has(`${building.name}:${room}`)) {
         const bays = [];
@@ -44,17 +53,13 @@ function randomizeObjectPlacements(buildings, isWall) {
   const cornerOffsets = [1.6, 5.4];
   const candidatesByObject = objects.map(entry => ({
     ...entry,
-    candidates: rooms.flatMap(destination => {
+    candidates: shuffle([...rooms]).flatMap(destination => {
       const positions = destination.bays.flatMap(({ col, row }) => cornerOffsets.flatMap(x => cornerOffsets.map(y => ({
         col, row, x, y,
         worldX: destination.building.x + col * SIZE + x,
         worldY: destination.building.y + row * SIZE + y
       }))));
-      const clearPositions = positions.filter(position => hasClearFootprint(footprintWorld, entry.object, position.worldX, position.worldY));
-      for (let i = clearPositions.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [clearPositions[i], clearPositions[j]] = [clearPositions[j], clearPositions[i]];
-      }
+      const clearPositions = shuffle(positions.filter(position => hasClearFootprint(footprintWorld, entry.object, position.worldX, position.worldY)));
       return clearPositions.length ? [{ destination, positions: clearPositions }] : [];
     })
   }));
@@ -77,7 +82,7 @@ function randomizeObjectPlacements(buildings, isWall) {
   }
   if (!assign(0)) throw new Error('Could not place all objects in distinct picture-free rooms.');
 
-  for (const building of buildings.filter(candidate => candidate.name !== 'E' && candidate.name !== 'F')) {
+  for (const building of eligibleBuildings) {
     building.objects = building.objects.filter(object => object.type === 'picture');
   }
   for (const { entry, destination, positions } of assignments) {

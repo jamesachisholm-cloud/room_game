@@ -36,6 +36,8 @@ Apply these whenever objects or pictures in [maps/world.map](maps/world.map) are
 - Place objects in room corners (`1.6` or `5.4` within the bay), away from doorways.
 - Never place a picture on a door, exit, or magic door; keep at least 0.8 map units from the opening and otherwise use the wall offset closest to the centre (`3.5`).
 
+When a game starts, non-picture objects are randomly reassigned among eligible picture-free rooms in buildings A–D. Buildings E and F are excluded.
+
 ## Project layout
 
 - `src/main.js`: starts the game and coordinates each frame
