@@ -1,7 +1,7 @@
 import { SIZE } from './world-constants.js?v=20261038';
 import { hasClearFootprint } from './placement.js?v=20261038';
 
-const ROBBER_SPEED = 1.8;
+const ROBBER_SPEED = 1.08;
 const REPLAN_SECONDS = 1.2;
 const CATCH_DISTANCE = .72;
 
