@@ -18,11 +18,11 @@ export function setupHud(canvas, controls) {
   }
   const intro = document.querySelector('#intro');
   const startButton = document.querySelector('#start');
-  const roomLabel = document.querySelector('#room');
-  const roomCount = document.querySelector('#room-count');
   const buildingLabel = document.querySelector('#building');
   const creditsLabel = document.querySelector('#credits');
   const creditsIndicator = document.querySelector('#credits-card');
+  const robberDistanceLabel = document.querySelector('#robber-distance');
+  const robberIndicator = document.querySelector('#robber-card');
   let lastCreditFlashId = 0;
   const help = document.querySelector('#help');
   const inventoryCount = document.querySelector('#inventory-count');
@@ -65,8 +65,17 @@ export function setupHud(canvas, controls) {
       const actionHint = touchMode ? 'PICK UP / DROP buttons' : 'E pick up · 1–9/0 select · G drop';
       const actionPrompt = player.actionMessageTimer > 0
         ? `${player.actionMessage} · ${actionHint}`
-        : touchMode ? 'Tap to walk forward/back · swipe to look · PICK UP / DROP buttons' : 'WASD move · mouse look · E pick up · 1–9/0 select · G drop';
+        : touchMode ? 'Tap to walk forward/back · swipe to look · PICK UP / DROP buttons' : 'E pick up · 1–9/0 select · G drop';
       const carriedCount = player.inventory.filter(Boolean).length;
+      const robber = world.robber;
+      if (robber) {
+        const distanceMeters = Math.hypot(player.x - robber.x, player.y - robber.y) * (10 / 7) * 0.3048;
+        robberDistanceLabel.textContent = `${Math.round(distanceMeters)} m`;
+        robberIndicator.classList.toggle('robber-near', distanceMeters < 5);
+      } else {
+        robberDistanceLabel.textContent = '—';
+        robberIndicator.classList.remove('robber-near');
+      }
       creditsLabel.textContent = String(player.credits);
       if (player.creditFlashId !== lastCreditFlashId) {
         lastCreditFlashId = player.creditFlashId;
@@ -83,13 +92,9 @@ export function setupHud(canvas, controls) {
       });
       if (room) {
         buildingLabel.textContent = room.building;
-        roomLabel.textContent = String(room.room).padStart(2, '0');
-        roomCount.textContent = String(room.roomCount);
         help.textContent = actionPrompt;
       } else {
         buildingLabel.textContent = '—';
-        roomLabel.textContent = 'OUT';
-        roomCount.textContent = '—';
         help.textContent = player.actionMessageTimer > 0
           ? actionPrompt
           : `OUTSIDE · follow paths · ${actionHint}`;
