@@ -16,6 +16,7 @@ export function attachPlayerControls(player, canvas, world) {
   let walkTarget = null;
   const VIEW_FOV = Math.PI / 3; // must match renderer FOV
   const TAP_WALK_CELLS_PER_WIDTH = 16;
+  const ROCKET_INTERACTION_RANGE = 2.2;
 
   function setMessage(message) {
     player.actionMessage = message;
@@ -24,6 +25,15 @@ export function attachPlayerControls(player, canvas, world) {
 
   function objectName(object) {
     return OBJECT_METADATA[object.type]?.name ?? object.type;
+  }
+
+  function boardRocket() {
+    if (!world.rocket || Math.hypot(player.x - world.rocket.entranceX, player.y - world.rocket.entranceY) >= ROCKET_INTERACTION_RANGE) return false;
+    keysDown.clear();
+    walkTarget = null;
+    player.launching = { elapsed: 0 };
+    player.actionMessageTimer = 0;
+    return true;
   }
 
   function objectRadius(object) {
@@ -45,6 +55,7 @@ export function attachPlayerControls(player, canvas, world) {
   }
 
   function pickUpObject() {
+    if (player.launching || player.gameComplete || boardRocket()) return;
     const slot = player.inventory.indexOf(null);
     if (slot < 0) {
       setMessage('Inventory full · 10 of 10 objects');
@@ -167,8 +178,13 @@ export function attachPlayerControls(player, canvas, world) {
 
   function onKeyDown(event) {
     const key = (event.key ?? '').toLowerCase();
+    if (player.launching || player.gameComplete) {
+      event.preventDefault();
+      return;
+    }
     if (!event.repeat && (key === 'e' || event.code === 'KeyE')) {
       event.preventDefault();
+      if (boardRocket()) return;
       pickUpObject();
       return;
     }
@@ -197,8 +213,14 @@ export function attachPlayerControls(player, canvas, world) {
 
   return {
     update(dt, world) {
+      if (player.launching) {
+        player.launching.elapsed += dt;
+        if (player.launching.elapsed >= 8.2) player.gameComplete = true;
+        return;
+      }
       player.actionMessageTimer = Math.max(0, (player.actionMessageTimer ?? 0) - dt);
       player.teleportFlash = Math.max(0, (player.teleportFlash ?? 0) - dt);
+      player.rocketNearby = Boolean(world.rocket && Math.hypot(player.x - world.rocket.entranceX, player.y - world.rocket.entranceY) < ROCKET_INTERACTION_RANGE);
       const turn = (keysDown.has('arrowright') ? 1 : 0) - (keysDown.has('arrowleft') ? 1 : 0);
       player.a += (turn + touchTurn) * dt * 2.1;
       let forward = (keysDown.has('w') || keysDown.has('arrowup') ? 1 : 0) - (keysDown.has('s') || keysDown.has('arrowdown') ? 1 : 0) + touchMove.y;

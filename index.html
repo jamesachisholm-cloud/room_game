@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Escape from Tzargarrot</title>
-<link rel="stylesheet" href="styles.css?v=20261064">
+<link rel="stylesheet" href="styles.css?v=20261091">
 </head>
 <body>
 <canvas id="view" aria-label="Wireframe first person room exploration game"></canvas>
@@ -16,6 +16,7 @@
 <a id="map-link" href="map.html" target="_blank" rel="noopener">VIEW MAP</a>
 <div id="rotate">Rotate your device to landscape to play</div>
 <div id="intro"><section><h1>Escape from Tzargarrot</h1><p>Explore the buildings. Earn enough credits to escape.</p><p>Move with <b>W A S D</b> or the arrow keys. Turn with the left and right arrow keys. Press <b>E</b> near an object to pick it up. Press <b>1–9</b> or <b>0</b> to select a slot, then <b>G</b> to drop it. Drop an object in a room with its matching picture to earn credits.</p><p class="touch-only">On a touch screen: tap the view above its lower quarter to walk forward (the higher the tap, the farther) and tap below that line to step back, or use the arrow buttons at the bottom right (up and down move, left and right turn). Tap <b>PICK UP</b> or <b>DROP</b> at the bottom left, and tap an inventory slot to select it.</p><button id="start">ENTER</button></section></div>
+<div id="ending" aria-live="polite"><section><p class="ending-kicker">MISSION COMPLETE</p><h1>THE STARS AWAIT</h1><p>You made it out of Tzargarrot.<br>The next adventure is yours to choose.</p><button id="restart">FLY AGAIN</button></section></div>
 <script>
   window.addEventListener('error', event => {
     const help = document.querySelector('#help');
@@ -33,6 +34,6 @@
     }
   }, 4000);
 </script>
-<script type="module" src="./src/main.js?v=20261089"></script>
+<script type="module" src="./src/main.js?v=20261091"></script>
 </body>
 </html>

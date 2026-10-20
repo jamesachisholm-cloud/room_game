@@ -1,9 +1,9 @@
 window.__roomLinesModuleLoaded = true;
 
-import { createWorld } from './world.js?v=20261087';
-import { createPlayer, attachPlayerControls } from './player.js?v=20261089';
-import { createRenderer } from './renderer.js?v=20261089';
-import { setupHud } from './hud.js?v=20261073';
+import { createWorld } from './world.js?v=20261090';
+import { createPlayer, attachPlayerControls } from './player.js?v=20261090';
+import { createRenderer } from './renderer.js?v=20261090';
+import { setupHud } from './hud.js?v=20261091';
 import { setupTouchControls } from './touch.js?v=20261072';
 
 async function startGame() {
@@ -22,7 +22,8 @@ async function startGame() {
       previousFrame = timestamp;
       controls.update(dt, world);
       hud.update(world, player);
-      renderer.draw(player);
+      if (player.launching?.elapsed >= 1.45) renderer.drawLaunch(player, world, player.launching.elapsed);
+      else renderer.draw(player);
     } catch (error) {
       console.error('Game frame failed:', error);
       document.querySelector('#help').textContent = `Game frame failed: ${error.message}`;

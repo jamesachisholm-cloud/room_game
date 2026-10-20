@@ -17,6 +17,7 @@ export function setupHud(canvas, controls) {
     compassTape.append(mark);
   }
   const intro = document.querySelector('#intro');
+  const ending = document.querySelector('#ending');
   const startButton = document.querySelector('#start');
   const buildingLabel = document.querySelector('#building');
   const creditsLabel = document.querySelector('#credits');
@@ -28,6 +29,8 @@ export function setupHud(canvas, controls) {
   const help = document.querySelector('#help');
   const inventoryCount = document.querySelector('#inventory-count');
   const inventorySlots = document.querySelector('#inventory-slots');
+  document.querySelector('#restart').addEventListener('click', () => location.reload());
+  let escapePortal;
   const slotLabels = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
   const slotElements = slotLabels.map((label, index) => {
     const slot = document.createElement('li');
@@ -57,14 +60,23 @@ export function setupHud(canvas, controls) {
 
   return {
     update(world, player) {
+      escapePortal ??= world.magicDoors.find(door => door.building === 'E' && door.target?.building === 'F');
       // Map north is -y and player.a is measured from east, so north is a = -90°.
       const bearing = (((player.a * 180 / Math.PI + 90) % 360) + 360) % 360;
       compassTape.style.transform = `translateX(${compass.clientWidth / 2 - (bearing + 360) * COMPASS_PX_PER_DEGREE}px)`;
       const room = world.getRoomAt(player.x, player.y);
       const actionHint = touchMode ? 'PICK UP / DROP buttons' : 'E pick up · 1–9/0 select · G drop';
-      const actionPrompt = player.actionMessageTimer > 0
+      const actionPrompt = player.rocketNearby && !player.launching
+        ? touchMode ? 'PICK UP to board the rocket' : 'E · BOARD THE ROCKET'
+        : player.launching ? 'THE ROCKET IS LIFTING OFF…'
+          : player.actionMessageTimer > 0
         ? `${player.actionMessage} · ${actionHint}`
         : touchMode ? 'Tap to walk · arrow buttons to turn · PICK UP / DROP' : 'Arrow keys turn · E pick up · 1–9/0 select · G drop';
+      if (player.launching) document.body.classList.add('rocket-flight');
+      if (player.gameComplete) {
+        document.body.classList.add('game-ended');
+        ending.classList.add('visible');
+      }
       const carriedCount = player.inventory.filter(Boolean).length;
       const robber = world.robber;
       if (robber) {
@@ -76,6 +88,8 @@ export function setupHud(canvas, controls) {
         robberIndicator.classList.remove('robber-near');
       }
       creditsLabel.textContent = String(player.credits);
+      const escapeReady = Boolean(escapePortal && (escapePortal.toll?.paid || player.credits >= (escapePortal.toll?.amount ?? 0)));
+      creditsIndicator.classList.toggle('credits-ready', escapeReady);
       if (player.creditFlashId !== lastCreditFlashId) {
         lastCreditFlashId = player.creditFlashId;
         creditsIndicator.classList.remove('credits-flashes');

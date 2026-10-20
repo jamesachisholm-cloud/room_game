@@ -590,7 +590,7 @@ export function createRenderer(canvas, world) {
             }
           }
         };
-        drawText('Escape\n\n\n200\n\nCredits');
+        drawText('Flight\n\n\n200\n\nCredits');
         return;
       }
       const strokes = DOOR_GLYPHS[portal.target?.building?.[0]];
@@ -699,6 +699,35 @@ export function createRenderer(canvas, world) {
     if (world.cat && !world.cat.held && isNear(world.cat)) drawWireObject(world.cat, false, objectStyle(world.cat));
     for (const guitar of world.guitars) if (!guitar.held && isNear(guitar)) drawWireObject(guitar, false, objectStyle(guitar));
     for (const object of world.wireObjects) if (!object.held && isNear(object)) drawWireObject(object, false, objectStyle(object));
+    if (world.rocket && isNear(world.rocket)) {
+      const launchSeconds = player.launching?.elapsed ?? 0;
+      const lift = player.launching ? Math.min(18, launchSeconds * launchSeconds * 2.4) : 0;
+      const rocketStyle = player.launching
+        ? { color: 'rgba(255,211,126,.95)', width: 1.8 }
+        : { color: 'rgba(255,201,124,.9)', width: 1.7 };
+      context.strokeStyle = rocketStyle.color;
+      context.lineWidth = rocketStyle.width;
+      context.beginPath();
+      for (const line of world.rocket.lines) {
+        addProjectedPolyline(line.map(point => ({ x: point.x, y: point.y, z: point.z + lift })), false, 8);
+      }
+      context.stroke();
+      if (player.launching && launchSeconds < 1.45) {
+        context.save();
+        context.globalAlpha = Math.max(.15, 1 - launchSeconds * .4);
+        context.strokeStyle = '#ff9e52';
+        context.lineWidth = 2;
+        context.beginPath();
+        for (const side of [-1, 0, 1]) {
+          addProjectedPolyline([
+            { x: world.rocket.x + side * .12, y: world.rocket.y - 4.25, z: lift + .35 },
+            { x: world.rocket.x + side * (.35 + launchSeconds * .2), y: world.rocket.y - 4.8, z: Math.max(.05, lift - .9 - Math.abs(side) * .2) }
+          ], true, 6);
+        }
+        context.stroke();
+        context.restore();
+      }
+    }
     for (const picture of world.pictures) {
       if (!isNear(picture)) continue;
       const lineStyle = objectStyle(picture);
@@ -764,5 +793,141 @@ export function createRenderer(canvas, world) {
     }
   }
 
-  return { draw };
+  function drawLaunch(player, world, elapsed) {
+    const clock = elapsed;
+    const flightTime = Math.max(0, clock - 1.45);
+    const progress = Math.max(0, Math.min(1, flightTime / 6.75));
+    context.clearRect(0, 0, width, height);
+
+    const sky = context.createLinearGradient(0, 0, 0, height);
+    sky.addColorStop(0, '#050916');
+    sky.addColorStop(.55, '#101a33');
+    sky.addColorStop(1, '#24172b');
+    context.fillStyle = sky;
+    context.fillRect(0, 0, width, height);
+
+    for (let index = 0; index < 180; index++) {
+      const x = ((index * 97.31 + 17) % 997) / 997 * width;
+      const y = ((index * 53.77 + 31) % 991) / 991 * height;
+      const twinkle = .35 + .65 * (.5 + .5 * Math.sin(clock * 2 + index * 7.13));
+      context.fillStyle = `rgba(220,235,255,${twinkle * (index % 9 === 0 ? .9 : .5)})`;
+      context.fillRect(x, y, index % 9 === 0 ? 2 : 1, index % 9 === 0 ? 2 : 1);
+    }
+
+    // The home world starts large in the window and dwindles as the ship climbs away.
+    const minSide = Math.min(width, height);
+    const worldRadius = minSide * (.39 * (1 - progress) ** 1.15 + .027);
+    const worldX = width * (.5 + Math.sin(progress * 2.2) * .08);
+    const worldY = height * (.49 + progress * .19);
+    const orb = context.createRadialGradient(worldX - worldRadius * .28, worldY - worldRadius * .42, worldRadius * .04, worldX, worldY, worldRadius);
+    orb.addColorStop(0, '#7395aa');
+    orb.addColorStop(.56, '#375773');
+    orb.addColorStop(1, '#11182b');
+    context.save();
+    context.beginPath();
+    context.ellipse(worldX, worldY, worldRadius, worldRadius * .66, -.12, 0, Math.PI * 2);
+    context.clip();
+    context.fillStyle = orb;
+    context.fillRect(worldX - worldRadius, worldY - worldRadius, worldRadius * 2, worldRadius * 2);
+    context.strokeStyle = `rgba(151,220,255,${.68 * (1 - progress * .58)})`;
+    context.lineWidth = Math.max(1, worldRadius * .015);
+    context.beginPath();
+    context.ellipse(worldX, worldY, worldRadius * .94, worldRadius * .61, -.12, 0, Math.PI * 2);
+    context.stroke();
+
+    const nearby = world.buildingPlans.filter(building => ['A', 'B', 'C', 'D', 'E'].includes(building.name));
+    const minX = Math.min(...nearby.map(building => building.x));
+    const minY = Math.min(...nearby.map(building => building.y));
+    const spanX = Math.max(...nearby.map(building => building.x + building.w)) - minX || 1;
+    const spanY = Math.max(...nearby.map(building => building.y + building.h)) - minY || 1;
+    const mapPoint = (x, y) => ({
+      x: worldX + ((x - minX) / spanX - .5) * worldRadius * 1.42,
+      y: worldY + ((y - minY) / spanY - .5) * worldRadius * .72
+    });
+    context.strokeStyle = `rgba(147,255,222,${.82 * (1 - progress * .6)})`;
+    context.lineWidth = Math.max(1, worldRadius * .012);
+    context.beginPath();
+    for (const path of world.paths) {
+      const start = path.axis === 'x' ? mapPoint(path.from, path.fixed) : mapPoint(path.fixed, path.from);
+      const end = path.axis === 'x' ? mapPoint(path.to, path.fixed) : mapPoint(path.fixed, path.to);
+      context.moveTo(start.x, start.y);
+      context.lineTo(end.x, end.y);
+    }
+    context.stroke();
+    for (const building of nearby) {
+      const left = mapPoint(building.x, building.y);
+      const right = mapPoint(building.x + building.w, building.y + building.h);
+      const bx = left.x;
+      const by = left.y;
+      const bw = right.x - left.x;
+      const bh = right.y - left.y;
+      context.fillStyle = building.name === 'E' ? 'rgba(255,222,151,.82)' : 'rgba(40,73,81,.95)';
+      context.strokeStyle = building.name === 'E'
+        ? `rgba(255,231,170,${1 - progress * .6})`
+        : `rgba(163,255,225,${.9 * (1 - progress * .6)})`;
+      context.lineWidth = Math.max(1, worldRadius * .014);
+      context.fillRect(bx, by, bw, bh);
+      context.strokeRect(bx, by, bw, bh);
+      context.beginPath();
+      for (let row = 1; row < building.rows; row++) {
+        const y = by + bh * row / building.rows;
+        context.moveTo(bx, y);
+        context.lineTo(bx + bw, y);
+      }
+      for (let col = 1; col < building.cols; col++) {
+        const x = bx + bw * col / building.cols;
+        context.moveTo(x, by);
+        context.lineTo(x, by + bh);
+      }
+      context.stroke();
+    }
+    const outpostX = worldX + worldRadius * .78;
+    const outpostY = worldY + worldRadius * .25;
+    context.strokeStyle = `rgba(255,215,139,${1 - progress * .55})`;
+    context.fillStyle = `rgba(255,215,139,${.85 * (1 - progress * .5)})`;
+    context.lineWidth = Math.max(1, worldRadius * .014);
+    context.beginPath();
+    context.moveTo(outpostX - worldRadius * .045, outpostY + worldRadius * .028);
+    context.lineTo(outpostX, outpostY - worldRadius * .045);
+    context.lineTo(outpostX + worldRadius * .045, outpostY + worldRadius * .028);
+    context.closePath();
+    context.fill();
+    context.stroke();
+    context.restore();
+
+    // Warm exhaust trails slide past the window during the first seconds of flight.
+    if (progress < .88) {
+      const fade = 1 - progress / .88;
+      for (let index = 0; index < 18; index++) {
+        const x = ((index * 83 + 23) % 101) / 101 * width;
+        const y = height * (.3 + ((index * 37 + clock * 115) % 70) / 100);
+        context.strokeStyle = `rgba(255,170,92,${fade * .45})`;
+        context.lineWidth = index % 4 === 0 ? 2 : 1;
+        context.beginPath();
+        context.moveTo(x, y);
+        context.lineTo(x - width * .025, y + height * .075);
+        context.stroke();
+      }
+    }
+
+    // A brass-edged viewport makes the shot read as a view back from the rocket.
+    context.strokeStyle = 'rgba(188,209,221,.48)';
+    context.lineWidth = Math.max(2, minSide * .008);
+    context.beginPath();
+    context.moveTo(width * .08, height * .08);
+    context.lineTo(width * .25, height * .035);
+    context.lineTo(width * .75, height * .035);
+    context.lineTo(width * .92, height * .08);
+    context.lineTo(width * .98, height * .88);
+    context.lineTo(width * .82, height * .97);
+    context.moveTo(width * .18, height * .97);
+    context.lineTo(width * .02, height * .88);
+    context.closePath();
+    context.stroke();
+    context.strokeStyle = 'rgba(255,211,139,.24)';
+    context.lineWidth = 1;
+    context.strokeRect(width * .045, height * .09, width * .91, height * .81);
+  }
+
+  return { draw, drawLaunch };
 }
