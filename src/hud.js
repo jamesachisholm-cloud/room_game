@@ -24,6 +24,7 @@ export function setupHud(canvas, controls) {
   const robberDistanceLabel = document.querySelector('#robber-distance');
   const robberIndicator = document.querySelector('#robber-card');
   let lastCreditFlashId = 0;
+  let lastInventoryFlashId = 0;
   const help = document.querySelector('#help');
   const inventoryCount = document.querySelector('#inventory-count');
   const inventorySlots = document.querySelector('#inventory-slots');
@@ -80,6 +81,12 @@ export function setupHud(canvas, controls) {
         creditsIndicator.classList.remove('credits-flashes');
         void creditsIndicator.offsetWidth;
         creditsIndicator.classList.add('credits-flashes');
+      }
+      if (player.inventoryFlashId !== lastInventoryFlashId) {
+        lastInventoryFlashId = player.inventoryFlashId;
+        inventorySlots.classList.remove('inventory-flashes');
+        void inventorySlots.offsetWidth;
+        inventorySlots.classList.add('inventory-flashes');
       }
       inventoryCount.textContent = `${carriedCount} / 10`;
       slotElements.forEach(({ slot, item }, index) => {

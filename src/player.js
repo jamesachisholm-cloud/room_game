@@ -4,7 +4,7 @@ import { hasClearFootprint } from './placement.js?v=20261038';
 import { createRobber, stealInventoryObject, updateRobber } from './robber.js?v=20261089';
 
 export function createPlayer(start) {
-  return { ...start, credits: 0, creditFlashId: 0, inventory: Array(10).fill(null), selectedInventorySlot: 0 };
+  return { ...start, credits: 0, creditFlashId: 0, inventoryFlashId: 0, inventory: Array(10).fill(null), selectedInventorySlot: 0 };
 }
 
 export function attachPlayerControls(player, canvas, world) {
@@ -233,6 +233,7 @@ export function attachPlayerControls(player, canvas, world) {
           setMessage('The robber reaches for you, but your inventory is empty');
           return false;
         }
+        player.inventoryFlashId += 1;
         setMessage('The robber stole an object and sent it to a random room in Building E');
         return true;
       });

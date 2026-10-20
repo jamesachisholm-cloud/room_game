@@ -37,6 +37,12 @@ button { cursor:pointer; color:#07100f; background:var(--glow); border:0; paddin
 #credits-card { transform-origin:top left; }
 #robber-card.robber-near { color:#ffb0a8; border-color:#ff756a; box-shadow:0 0 14px #ff4f3b66; }
 #credits-card.credits-flashes { animation: credits-burst 1.1s ease-out; }
+#inventory-slots.inventory-flashes { animation: inventory-burst 1.1s ease-out; }
+@keyframes inventory-burst {
+  0%, 100% { filter:none; }
+  10%, 52% { filter:brightness(1.8) drop-shadow(0 0 7px #ff756a); }
+  22%, 64% { filter:none; }
+}
 @keyframes credits-burst {
   0%, 100% { color:var(--ink); border-color:#70a9a066; box-shadow:none; transform:scale(1); }
   10% { color:#fff2bf; border-color:#fff2bf; box-shadow:0 0 18px #ffd166aa; transform:scale(1.12); }
