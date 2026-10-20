@@ -192,20 +192,8 @@ export function attachPlayerControls(player, canvas, world) {
   function onKeyUp(event) {
     keysDown.delete(event.key.toLowerCase());
   }
-  function onMouseMove(event) {
-    if (document.pointerLockElement === canvas) player.a += event.movementX * .0025;
-  }
-  function onEscape(event) {
-    if (event.key === 'Escape' && document.pointerLockElement) document.exitPointerLock();
-  }
-
   document.addEventListener('keydown', onKeyDown, true);
   addEventListener('keyup', onKeyUp);
-  document.addEventListener('mousemove', onMouseMove);
-  addEventListener('keydown', onEscape);
-  canvas.addEventListener('click', () => {
-    if (!matchMedia('(pointer: coarse)').matches) canvas.requestPointerLock?.();
-  });
 
   return {
     update(dt, world) {
@@ -262,9 +250,6 @@ export function attachPlayerControls(player, canvas, world) {
       reach = Math.min(reach, distance);
       if (reach < distance) reach -= .3;
       walkTarget = reach > .15 ? { x: player.x + dirX * reach, y: player.y + dirY * reach } : null;
-    },
-    lookBy(radians) {
-      player.a += radians;
     },
     pickUpObject,
     dropObject,

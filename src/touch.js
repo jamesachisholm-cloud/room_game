@@ -6,28 +6,20 @@ export function setupTouchControls(controls, canvas) {
 
   const TAP_SLOP = 12;
   const TAP_MS = 400;
-  const LOOK_RADIANS_PER_PX = 0.0048;
   // Taps above this fraction of the view height walk forward and taps below walk back.
   const TAP_SPLIT = 0.75;
   let gesture = null;
   canvas.style.touchAction = 'none';
   canvas.addEventListener('pointerdown', event => {
     if (gesture) return;
-    gesture = { id: event.pointerId, x: event.clientX, startX: event.clientX, startY: event.clientY, time: performance.now(), dragging: false };
+    gesture = { id: event.pointerId, startX: event.clientX, startY: event.clientY, time: performance.now() };
     canvas.setPointerCapture(event.pointerId);
-  });
-  canvas.addEventListener('pointermove', event => {
-    if (!gesture || event.pointerId !== gesture.id) return;
-    if (!gesture.dragging && Math.hypot(event.clientX - gesture.startX, event.clientY - gesture.startY) > TAP_SLOP) gesture.dragging = true;
-    if (!gesture.dragging) return;
-    controls.lookBy(-(event.clientX - gesture.x) * LOOK_RADIANS_PER_PX);
-    gesture.x = event.clientX;
   });
   canvas.addEventListener('pointerup', event => {
     if (!gesture || event.pointerId !== gesture.id) return;
-    const { dragging, time } = gesture;
+    const { startX, startY, time } = gesture;
     gesture = null;
-    if (dragging || performance.now() - time > TAP_MS) return;
+    if (Math.hypot(event.clientX - startX, event.clientY - startY) > TAP_SLOP || performance.now() - time > TAP_MS) return;
     const rect = canvas.getBoundingClientRect();
     controls.walkToScreenPoint(
       (event.clientX - rect.left - rect.width / 2) / rect.width,

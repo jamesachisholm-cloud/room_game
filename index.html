@@ -11,11 +11,11 @@
 <div id="hud"><div class="card">BUILDING <span id="building">A</span></div><div class="card" id="credits-card">CREDITS <span id="credits">0</span></div><div class="card" id="robber-card">ROBBER <span id="robber-distance">—</span></div></div>
 <div id="crosshair"></div>
 <div id="compass" aria-label="Compass"><div id="compass-tape"></div></div>
-<div id="help">Arrows turn · click to capture mouse</div>
+<div id="help">Arrow keys turn · WASD / arrows move</div>
 <aside id="inventory" aria-label="Inventory"><div class="inventory-heading"><span>INVENTORY</span><span id="inventory-count">0 / 10</span></div><ol id="inventory-slots"></ol></aside>
 <a id="map-link" href="map.html" target="_blank" rel="noopener">VIEW MAP</a>
 <div id="rotate">Rotate your device to landscape to play</div>
-<div id="intro"><section><h1>Escape from Tzargarrot</h1><p>Explore the buildings. Earn enough credits to escape.</p><p>Move with <b>W A S D</b> or the arrow keys. Turn with your mouse. Press <b>E</b> near an object to pick it up. Press <b>1–9</b> or <b>0</b> to select a slot, then <b>G</b> to drop it. Drop an object in a room with its matching picture to earn credits.</p><p class="touch-only">On a touch screen: swipe left or right to look, tap the view above its lower quarter to walk forward (the higher the tap, the farther) and tap below that line to step back, or use the arrow buttons at the bottom right (up and down move, left and right turn). Tap <b>PICK UP</b> or <b>DROP</b> at the bottom left, and tap an inventory slot to select it.</p><button id="start">ENTER</button></section></div>
+<div id="intro"><section><h1>Escape from Tzargarrot</h1><p>Explore the buildings. Earn enough credits to escape.</p><p>Move with <b>W A S D</b> or the arrow keys. Turn with the left and right arrow keys. Press <b>E</b> near an object to pick it up. Press <b>1–9</b> or <b>0</b> to select a slot, then <b>G</b> to drop it. Drop an object in a room with its matching picture to earn credits.</p><p class="touch-only">On a touch screen: tap the view above its lower quarter to walk forward (the higher the tap, the farther) and tap below that line to step back, or use the arrow buttons at the bottom right (up and down move, left and right turn). Tap <b>PICK UP</b> or <b>DROP</b> at the bottom left, and tap an inventory slot to select it.</p><button id="start">ENTER</button></section></div>
 <script>
   window.addEventListener('error', event => {
     const help = document.querySelector('#help');

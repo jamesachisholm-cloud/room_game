@@ -16,7 +16,6 @@ Then open [http://localhost:8000](http://localhost:8000). Stop the server with `
 
 - `W`, `A`, `S`, `D`: move
 - Arrow keys: move forward/back and turn left/right
-- Mouse: look around after clicking the game to capture the pointer
 - `E`: pick up a nearby object
 - `1`–`9` or `0`: select an inventory slot
 - `G`: drop the selected object
