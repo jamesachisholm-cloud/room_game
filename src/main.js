@@ -1,9 +1,9 @@
 window.__roomLinesModuleLoaded = true;
 
-import { createWorld } from './world.js?v=20261090';
-import { createPlayer, attachPlayerControls } from './player.js?v=20261090';
-import { createRenderer } from './renderer.js?v=20261090';
-import { setupHud } from './hud.js?v=20261091';
+import { createWorld } from './world.js?v=20261092';
+import { createPlayer, attachPlayerControls } from './player.js?v=20261092';
+import { createRenderer } from './renderer.js?v=20261092';
+import { setupHud } from './hud.js?v=20261092';
 import { setupTouchControls } from './touch.js?v=20261072';
 
 async function startGame() {

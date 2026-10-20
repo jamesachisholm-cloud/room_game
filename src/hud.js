@@ -27,6 +27,9 @@ export function setupHud(canvas, controls) {
   let lastCreditFlashId = 0;
   let lastInventoryFlashId = 0;
   const help = document.querySelector('#help');
+  const boardingPrompt = document.querySelector('#boarding-prompt');
+  const boardingKey = document.querySelector('#boarding-key');
+  const boardingLabel = document.querySelector('#boarding-label');
   const inventoryCount = document.querySelector('#inventory-count');
   const inventorySlots = document.querySelector('#inventory-slots');
   document.querySelector('#restart').addEventListener('click', () => location.reload());
@@ -73,6 +76,9 @@ export function setupHud(canvas, controls) {
         ? `${player.actionMessage} · ${actionHint}`
         : touchMode ? 'Tap to walk · arrow buttons to turn · PICK UP / DROP' : 'Arrow keys turn · E pick up · 1–9/0 select · G drop';
       if (player.launching) document.body.classList.add('rocket-flight');
+      boardingPrompt.classList.toggle('visible', player.rocketNearby && !player.launching);
+      boardingKey.hidden = touchMode;
+      boardingLabel.textContent = touchMode ? 'TAP PICK UP TO BOARD' : 'PRESS E TO BOARD';
       if (player.gameComplete) {
         document.body.classList.add('game-ended');
         ending.classList.add('visible');

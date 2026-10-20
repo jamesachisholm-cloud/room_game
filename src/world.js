@@ -3,7 +3,7 @@ import { makeCat, makeGuitar, makeSimpleObject, makeWallPicture } from './object
 import { hasClearFootprint } from './placement.js?v=20261038';
 import { SIMPLE_OBJECT_TYPES } from './object-types.js?v=20261039';
 import { SIZE } from './world-constants.js?v=20261038';
-import { makeRocket } from './rocket.js?v=20261090';
+import { makeRocket } from './rocket.js?v=20261092';
 
 export { CELL_FT, SIZE } from './world-constants.js?v=20261038';
 export { parsePlan } from './map-plan.js?v=20261084';
@@ -371,7 +371,7 @@ export async function createWorld() {
     }
   }
   const start = { x: placed.A.x + 3.5, y: placed.A.y + 3.5, a: 0 };
-  const rocket = makeRocket(placed.F.x + placed.F.w / 2, placed.F.y + placed.F.h + 1.2);
+  const rocket = makeRocket(placed.F.x + placed.F.w / 2, placed.F.y + placed.F.h + 4.5);
   const buildingPlans = buildings.map(building => ({
     name: building.name, x: building.x, y: building.y, cols: building.cols, rows: building.rows,
     w: building.w, h: building.h, grid: building.grid, doors: building.doors, exits: building.exits, magicDoors: building.magicDoors, objects: building.objects,

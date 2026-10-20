@@ -712,6 +712,11 @@ export function createRenderer(canvas, world) {
         addProjectedPolyline(line.map(point => ({ x: point.x, y: point.y, z: point.z + lift })), false, 8);
       }
       context.stroke();
+      context.strokeStyle = 'rgba(255,227,159,.98)';
+      context.lineWidth = 2.2;
+      context.beginPath();
+      for (const line of world.rocket.signLines) addProjectedPolyline(line, false, 8);
+      context.stroke();
       if (player.launching && launchSeconds < 1.45) {
         context.save();
         context.globalAlpha = Math.max(.15, 1 - launchSeconds * .4);
@@ -720,8 +725,8 @@ export function createRenderer(canvas, world) {
         context.beginPath();
         for (const side of [-1, 0, 1]) {
           addProjectedPolyline([
-            { x: world.rocket.x + side * .12, y: world.rocket.y - 4.25, z: lift + .35 },
-            { x: world.rocket.x + side * (.35 + launchSeconds * .2), y: world.rocket.y - 4.8, z: Math.max(.05, lift - .9 - Math.abs(side) * .2) }
+            { x: world.rocket.x - 4.25, y: world.rocket.y + side * .12, z: lift + .35 },
+            { x: world.rocket.x - 4.8, y: world.rocket.y + side * (.35 + launchSeconds * .2), z: Math.max(.05, lift - .9 - Math.abs(side) * .2) }
           ], true, 6);
         }
         context.stroke();

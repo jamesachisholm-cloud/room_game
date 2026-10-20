@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Escape from Tzargarrot</title>
-<link rel="stylesheet" href="styles.css?v=20261091">
+<link rel="stylesheet" href="styles.css?v=20261092">
 </head>
 <body>
 <canvas id="view" aria-label="Wireframe first person room exploration game"></canvas>
@@ -12,6 +12,7 @@
 <div id="crosshair"></div>
 <div id="compass" aria-label="Compass"><div id="compass-tape"></div></div>
 <div id="help">Arrow keys turn · WASD / arrows move</div>
+<div id="boarding-prompt" aria-live="polite"><kbd id="boarding-key">E</kbd><span id="boarding-label">PRESS E TO BOARD</span></div>
 <aside id="inventory" aria-label="Inventory"><div class="inventory-heading"><span>INVENTORY</span><span id="inventory-count">0 / 10</span></div><ol id="inventory-slots"></ol></aside>
 <a id="map-link" href="map.html" target="_blank" rel="noopener">VIEW MAP</a>
 <div id="rotate">Rotate your device to landscape to play</div>
@@ -34,6 +35,6 @@
     }
   }, 4000);
 </script>
-<script type="module" src="./src/main.js?v=20261091"></script>
+<script type="module" src="./src/main.js?v=20261092"></script>
 </body>
 </html>

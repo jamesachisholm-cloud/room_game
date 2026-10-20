@@ -6,6 +6,11 @@ canvas { display:block; width:100%; height:100%; }
 .card { border:1px solid #70a9a066; background:#07100fb8; padding:10px 13px; letter-spacing:.08em; text-transform:uppercase; }
 #room { color:var(--glow); font-size:18px }
 #help { position:fixed; left:50%; bottom:18px; transform:translateX(-50%); white-space:nowrap; color:#b8d3ce; background:#07100fba; border:1px solid #70a9a044; padding:8px 12px; pointer-events:none; }
+#boarding-prompt { position:fixed; z-index:2; left:50%; bottom:68px; display:flex; align-items:center; gap:12px; padding:12px 18px; color:#ffe2a7; border:1px solid #ffd38bcc; background:#17120de8; box-shadow:0 0 26px #ffc46a55,inset 0 0 18px #ffc46a12; font-size:15px; font-weight:bold; letter-spacing:.12em; opacity:0; pointer-events:none; transform:translate(-50%,10px); transition:opacity .2s ease,transform .2s ease; }
+#boarding-prompt.visible { opacity:1; transform:translate(-50%,0); animation:boarding-glow 1.5s ease-in-out infinite alternate; }
+#boarding-prompt kbd { display:grid; width:34px; height:34px; place-items:center; color:#20170c; border-radius:4px; background:#ffd38b; font: bold 19px/1 ui-monospace,SFMono-Regular,Menlo,monospace; box-shadow:0 2px 0 #9c6830; }
+#boarding-prompt kbd[hidden] { display:none; }
+@keyframes boarding-glow { from { box-shadow:0 0 12px #ffc46a44,inset 0 0 12px #ffc46a0a; } to { box-shadow:0 0 30px #ffc46a77,inset 0 0 20px #ffc46a18; } }
 #intro { position:fixed; inset:0; display:grid; place-items:center; background:#06100ed9; text-align:center; transition:opacity .35s; }
 #intro.hidden { opacity:0; pointer-events:none }
 #ending { position:fixed; inset:0; z-index:5; display:grid; place-items:center; padding:24px; background:linear-gradient(180deg,#07101a88,#070b16ee); opacity:0; pointer-events:none; transition:opacity 1.2s ease; }
@@ -15,8 +20,8 @@ canvas { display:block; width:100%; height:100%; }
 #ending p { color:#c5d6df; }
 #ending .ending-kicker { color:#9be6d4; font-size:12px; letter-spacing:.25em; }
 #ending button { margin-top:10px; color:#19130b; background:#ffd38b; }
-body.rocket-flight #hud, body.rocket-flight #crosshair, body.rocket-flight #compass, body.rocket-flight #help, body.rocket-flight #inventory, body.rocket-flight #map-link { opacity:0; pointer-events:none; transition:opacity .6s ease; }
-body.game-ended #hud, body.game-ended #crosshair, body.game-ended #compass, body.game-ended #help, body.game-ended #inventory, body.game-ended #map-link { display:none; }
+body.rocket-flight #hud, body.rocket-flight #crosshair, body.rocket-flight #compass, body.rocket-flight #help, body.rocket-flight #inventory, body.rocket-flight #map-link, body.rocket-flight #boarding-prompt { opacity:0; pointer-events:none; transition:opacity .6s ease; }
+body.game-ended #hud, body.game-ended #crosshair, body.game-ended #compass, body.game-ended #help, body.game-ended #inventory, body.game-ended #map-link, body.game-ended #boarding-prompt { display:none; }
 #intro section { max-width:530px; max-height:100dvh; overflow-y:auto; padding:30px; border:1px solid #72ffd066; background:#091614; box-shadow:0 0 70px #72ffd012; }
 h1 { margin:0 0 10px; font-weight:500; letter-spacing:.24em; color:var(--glow); font-size:clamp(26px,5vw,42px) }
 p { color:#aac6bf; margin:8px 0 20px }
@@ -79,6 +84,7 @@ button { cursor:pointer; color:#07100f; background:var(--glow); border:0; paddin
   #inventory { top:8px; right:8px; width:150px; padding:6px; font-size:11px; pointer-events:auto; touch-action:none; }
   .inventory-slot { padding:5px; }
   #help { bottom:6px; max-width:36vw; white-space:normal; text-align:center; font-size:11px; padding:5px 8px; }
+  #boarding-prompt { bottom:78px; gap:8px; padding:9px 12px; font-size:12px; }
   #map-link { left:8px; right:auto; bottom:112px; padding:5px 8px; font-size:11px; }
   #crosshair { display:none; }
   #touch-controls { display:block; position:fixed; inset:0; pointer-events:none; }
