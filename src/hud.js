@@ -18,6 +18,10 @@ export function setupHud(canvas, controls) {
   }
   const intro = document.querySelector('#intro');
   const ending = document.querySelector('#ending');
+  const endingKicker = document.querySelector('#ending-kicker');
+  const endingTitle = document.querySelector('#ending-title');
+  const endingMessage = document.querySelector('#ending-message');
+  const restartButton = document.querySelector('#restart');
   const startButton = document.querySelector('#start');
   const buildingLabel = document.querySelector('#building');
   const creditsLabel = document.querySelector('#credits');
@@ -32,7 +36,7 @@ export function setupHud(canvas, controls) {
   const boardingLabel = document.querySelector('#boarding-label');
   const inventoryCount = document.querySelector('#inventory-count');
   const inventorySlots = document.querySelector('#inventory-slots');
-  document.querySelector('#restart').addEventListener('click', () => location.reload());
+  restartButton.addEventListener('click', () => location.reload());
   let escapePortal;
   const slotLabels = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'];
   const slotElements = slotLabels.map((label, index) => {
@@ -82,6 +86,13 @@ export function setupHud(canvas, controls) {
       if (player.gameComplete) {
         document.body.classList.add('game-ended');
         ending.classList.add('visible');
+        const robbed = player.gameOutcome === 'robbed';
+        endingKicker.textContent = robbed ? 'CAUGHT BY THE ROBBER' : 'MISSION COMPLETE';
+        endingTitle.textContent = robbed ? 'THE ROBBER GOT YOU' : 'THE STARS AWAIT';
+        endingMessage.innerHTML = robbed
+          ? 'The robber found your pockets empty.<br>Try again and protect your loot.'
+          : 'You made it out of Tzargarrot.<br>The next adventure is yours to choose.';
+        restartButton.textContent = robbed ? 'TRY AGAIN' : 'FLY AGAIN';
       }
       const carriedCount = player.inventory.filter(Boolean).length;
       const robber = world.robber;

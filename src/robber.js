@@ -112,29 +112,69 @@ function furthestRoomPosition(world, player) {
   return best;
 }
 
-function placeStolenObject(world, object) {
-  const building = world.buildings.find(candidate => candidate.name === 'E');
-  const positionsByRoom = new Map();
-  for (let row = 0; row < building.rows; row++) {
-    for (let col = 0; col < building.cols; col++) {
-      const x = building.x + col * SIZE + SIZE / 2;
-      const y = building.y + row * SIZE + SIZE / 2;
-      if (!hasClearFootprint(world, object, x, y)) continue;
-      if (world.pickups.some(other => other !== object && !other.held && Math.hypot(other.x - x, other.y - y) < .9)) continue;
-      const room = building.grid[row][col];
-      if (!positionsByRoom.has(room)) positionsByRoom.set(room, []);
-      positionsByRoom.get(room).push({ x, y });
+function getEmptyStashRooms(world) {
+  const buildings = world.buildings.filter(candidate => ['A', 'B', 'C', 'D'].includes(candidate.name));
+  const occupied = new Set();
+  for (const object of world.pickups) {
+    if (object.held) continue;
+    const room = world.getRoomAt(object.x, object.y);
+    if (room && ['A', 'B', 'C', 'D'].includes(room.building)) occupied.add(`${room.building}:${room.room}`);
+  }
+  const rooms = new Map();
+  for (const building of buildings) {
+    for (let row = 0; row < building.rows; row++) {
+      for (let col = 0; col < building.cols; col++) {
+        const roomId = Number(building.grid[row][col]);
+        const key = `${building.name}:${roomId}`;
+        if (occupied.has(key)) continue;
+        if (!rooms.has(key)) rooms.set(key, { key, building, roomId, bays: [] });
+        rooms.get(key).bays.push({ col, row });
+      }
     }
   }
-  const rooms = [...positionsByRoom.values()];
-  if (rooms.length) {
-    const roomPositions = rooms[Math.floor(Math.random() * rooms.length)];
-    const destination = roomPositions[Math.floor(Math.random() * roomPositions.length)];
-    world.moveObject(object, destination.x, destination.y);
-    object.held = false;
-    return true;
+  return [...rooms.values()];
+}
+
+function placeStolenObject(world, object, emptyRooms, roomsUsedThisCatch) {
+  const unusedRooms = emptyRooms.filter(room => !roomsUsedThisCatch.has(room.key));
+  const candidateRooms = unusedRooms.length ? unusedRooms : emptyRooms;
+  const positions = [];
+  for (const room of candidateRooms) {
+    for (const { col, row } of room.bays) {
+      for (const offsetX of [1.6, 5.4]) {
+        for (const offsetY of [1.6, 5.4]) {
+          const x = room.building.x + col * SIZE + offsetX;
+          const y = room.building.y + row * SIZE + offsetY;
+          if (!hasClearFootprint(world, object, x, y)) continue;
+          if (world.pickups.some(other => other !== object && !other.held && Math.hypot(other.x - x, other.y - y) < .9)) continue;
+          positions.push({ x, y, roomKey: room.key });
+        }
+      }
+    }
   }
-  return false;
+
+  if (!positions.length) {
+    for (const room of candidateRooms) {
+      for (const { col, row } of room.bays) {
+        for (let y = 1; y < SIZE - 1; y++) {
+          for (let x = 1; x < SIZE - 1; x++) {
+            const worldX = room.building.x + col * SIZE + x + .5;
+            const worldY = room.building.y + row * SIZE + y + .5;
+            if (!hasClearFootprint(world, object, worldX, worldY)) continue;
+            if (world.pickups.some(other => other !== object && !other.held && Math.hypot(other.x - worldX, other.y - worldY) < .9)) continue;
+            positions.push({ x: worldX, y: worldY, roomKey: room.key });
+          }
+        }
+      }
+    }
+  }
+
+  if (!positions.length) return false;
+  const destination = positions[Math.floor(Math.random() * positions.length)];
+  world.moveObject(object, destination.x, destination.y);
+  object.held = false;
+  roomsUsedThisCatch.add(destination.roomKey);
+  return true;
 }
 
 export function createRobber(world) {
@@ -175,13 +215,18 @@ export function updateRobber(robber, world, player, dt, onCatch) {
   }
 }
 
-export function stealInventoryObject(world, player) {
+export function stealInventoryObjects(world, player) {
   const occupied = player.inventory.flatMap((object, slot) => object ? [{ object, slot }] : []);
-  if (!occupied.length) return false;
-  const stolen = occupied[Math.floor(Math.random() * occupied.length)];
-  if (!placeStolenObject(world, stolen.object)) return false;
-  player.inventory[stolen.slot] = null;
+  if (!occupied.length) return 0;
+  let stolenCount = 0;
+  const emptyRooms = getEmptyStashRooms(world);
+  const roomsUsedThisCatch = new Set();
+  for (const { object, slot } of occupied) {
+    if (!placeStolenObject(world, object, emptyRooms, roomsUsedThisCatch)) continue;
+    player.inventory[slot] = null;
+    stolenCount++;
+  }
   const nextSlot = player.inventory.findIndex(object => object !== null);
-  if (nextSlot >= 0) player.selectedInventorySlot = nextSlot;
-  return true;
+  player.selectedInventorySlot = nextSlot >= 0 ? nextSlot : 0;
+  return stolenCount;
 }

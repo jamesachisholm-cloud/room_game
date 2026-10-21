@@ -1,7 +1,7 @@
 import { CELL_FT } from './world.js?v=20261085';
 import { OBJECT_METADATA } from './object-types.js?v=20261039';
 import { hasClearFootprint } from './placement.js?v=20261038';
-import { createRobber, stealInventoryObject, updateRobber } from './robber.js?v=20261089';
+import { createRobber, stealInventoryObjects, updateRobber } from './robber.js?v=20261095';
 
 export function createPlayer(start) {
   return { ...start, credits: 0, creditFlashId: 0, inventoryFlashId: 0, inventory: Array(10).fill(null), selectedInventorySlot: 0 };
@@ -213,6 +213,7 @@ export function attachPlayerControls(player, canvas, world) {
 
   return {
     update(dt, world) {
+      if (player.gameComplete) return;
       if (player.launching) {
         player.launching.elapsed += dt;
         if (player.launching.elapsed >= 8.2) player.gameComplete = true;
@@ -251,13 +252,16 @@ export function attachPlayerControls(player, canvas, world) {
       if (walkTarget && Math.hypot(player.x - beforeX, player.y - beforeY) < speed * .25) walkTarget = null;
       teleportAtMagicDoor();
       updateRobber(world.robber, world, player, dt, () => {
-        if (!stealInventoryObject(world, player)) {
-          setMessage('The robber reaches for you, but your inventory is empty');
+        const stolenCount = stealInventoryObjects(world, player);
+        if (!stolenCount) {
+          player.gameComplete = true;
+          player.gameOutcome = 'robbed';
           return false;
         }
         player.inventoryFlashId += 1;
-        setMessage('The robber stole an object and sent it to a random room in Building E');
-        return true;
+        const itemWord = stolenCount === 1 ? 'item' : 'items';
+        setMessage(`The robber stole all ${stolenCount} ${itemWord} and scattered them through Buildings A–D`);
+        return stolenCount;
       });
     },
     walkToScreenPoint(offsetX, offsetY) {
