@@ -30,7 +30,7 @@ const ESCAPE_DOOR_GLYPHS = {
   t: [[[1, 0], [1, 4]], [[0, 3], [2, 3]]]
 };
 const FOV = Math.PI / 3;
-const BUILDING_HUES = { A: 168, B: 190, C: 148, D: 208, E: 128, F: 280 };
+const BUILDING_HUES = { A: 168, B: 212, C: 124, D: 246, E: 84, F: 302 };
 // Map north is -y, so angles are measured from +x (east) towards +y (south).
 // Craters are [x, y, radius] in units of the moon's radius.
 const MOONS = [
