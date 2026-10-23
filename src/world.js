@@ -371,7 +371,7 @@ export async function createWorld() {
     }
   }
   const start = { x: placed.A.x + 3.5, y: placed.A.y + 3.5, a: 0 };
-  const rocket = makeRocket(placed.F.x + placed.F.w / 2, placed.F.y + placed.F.h + 4.5);
+  const rocket = makeRocket(placed.F.x + placed.F.w / 2, placed.F.y + placed.F.h + 18);
   const buildingPlans = buildings.map(building => ({
     name: building.name, x: building.x, y: building.y, cols: building.cols, rows: building.rows,
     w: building.w, h: building.h, grid: building.grid, doors: building.doors, exits: building.exits, magicDoors: building.magicDoors, objects: building.objects,

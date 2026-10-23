@@ -110,7 +110,7 @@ end
 building D 6 4
 rooms
 01 02 03 04 05 06
-07 08 08 08 08 09
+07 08 08 10 08 09
 09 08 08 08 08 09
 09 09 09 09 09 09
 doors
@@ -123,6 +123,7 @@ door 06 09 3
 door 01 07 3
 door 07 08 3
 door 07 09 3
+door 10 08 3
 exits
 exit east 09 20
 exit north 05
