@@ -619,24 +619,68 @@ export function createRenderer(canvas, world) {
     }
     pathLines ??= (() => {
       const lines = [];
-      for (const path of world.paths) {
-      for (const offset of [-PATH_HALF_WIDTH, PATH_HALF_WIDTH]) {
-        const from = trimJunctionEnd(path, path.from, path.to);
-        const to = trimJunctionEnd(path, path.to, path.from);
-        const low = Math.min(from, to);
-        const high = Math.max(from, to);
-        const samples = [];
-        for (let value = low; value < high; value += 4) samples.push(value);
-        samples.push(high);
-        const points = [];
-        for (const value of samples) {
-          const x = path.axis === 'x' ? value : path.fixed + offset;
-          const y = path.axis === 'x' ? path.fixed + offset : value;
-          points.push({ x, y, z: 0 });
+      const innerCornerTrims = new Map();
+      const cornerJoins = [];
+      const trimKey = (pathIndex, endpoint, offset) => `${pathIndex}:${endpoint}:${offset}`;
+
+      // Find 90-degree shared endpoints before drawing the parallel path edges.
+      for (let first = 0; first < world.paths.length; first++) {
+        for (let second = first + 1; second < world.paths.length; second++) {
+          const a = world.paths[first];
+          const b = world.paths[second];
+          if (a.axis === b.axis) continue;
+          const horizontalIndex = a.axis === 'x' ? first : second;
+          const verticalIndex = a.axis === 'y' ? first : second;
+          const horizontal = world.paths[horizontalIndex];
+          const vertical = world.paths[verticalIndex];
+          for (const x of [horizontal.from, horizontal.to]) {
+            for (const y of [vertical.from, vertical.to]) {
+              if (vertical.fixed !== x || horizontal.fixed !== y) continue;
+              const horizontalInward = Math.sign((x === horizontal.from ? horizontal.to : horizontal.from) - x);
+              const verticalInward = Math.sign((y === vertical.from ? vertical.to : vertical.from) - y);
+              for (const side of [-1, 1]) {
+                const verticalSide = side * horizontalInward * verticalInward;
+                if (side === verticalInward) {
+                  // The inner edges already intersect; stop both there to avoid doubled strokes.
+                  innerCornerTrims.set(trimKey(horizontalIndex, x, side), x + verticalSide * PATH_HALF_WIDTH);
+                  innerCornerTrims.set(trimKey(verticalIndex, y, verticalSide), y + side * PATH_HALF_WIDTH);
+                } else {
+                  const corner = [
+                    { x, y: y + side * PATH_HALF_WIDTH, z: 0 },
+                    { x: x + verticalSide * PATH_HALF_WIDTH, y: y + side * PATH_HALF_WIDTH, z: 0 },
+                    { x: x + verticalSide * PATH_HALF_WIDTH, y, z: 0 }
+                  ];
+                  cornerJoins.push(corner);
+                }
+              }
+            }
+          }
         }
-        lines.push(points);
       }
+
+      for (let pathIndex = 0; pathIndex < world.paths.length; pathIndex++) {
+        const path = world.paths[pathIndex];
+        for (const offset of [-PATH_HALF_WIDTH, PATH_HALF_WIDTH]) {
+          const from = innerCornerTrims.get(trimKey(pathIndex, path.from, offset))
+            ?? trimJunctionEnd(path, path.from, path.to);
+          const to = innerCornerTrims.get(trimKey(pathIndex, path.to, offset))
+            ?? trimJunctionEnd(path, path.to, path.from);
+          const low = Math.min(from, to);
+          const high = Math.max(from, to);
+          const samples = [];
+          for (let value = low; value < high; value += 4) samples.push(value);
+          samples.push(high);
+          const points = [];
+          for (const value of samples) {
+            const x = path.axis === 'x' ? value : path.fixed + offset;
+            const y = path.axis === 'x' ? path.fixed + offset : value;
+            points.push({ x, y, z: 0 });
+          }
+          lines.push(points);
+        }
       }
+
+      lines.push(...cornerJoins);
       return lines;
     })();
     context.strokeStyle = pathStyle.color;
@@ -819,7 +863,7 @@ export function createRenderer(canvas, world) {
       context.fillRect(x, y, index % 9 === 0 ? 2 : 1, index % 9 === 0 ? 2 : 1);
     }
 
-    // The home world starts large in the window and dwindles as the ship climbs away.
+    // The home planet starts large in the window and dwindles as the ship climbs away.
     const minSide = Math.min(width, height);
     const worldRadius = minSide * (.39 * (1 - progress) ** 1.15 + .027);
     const worldX = width * (.5 + Math.sin(progress * 2.2) * .08);
@@ -834,69 +878,43 @@ export function createRenderer(canvas, world) {
     context.clip();
     context.fillStyle = orb;
     context.fillRect(worldX - worldRadius, worldY - worldRadius, worldRadius * 2, worldRadius * 2);
-    context.strokeStyle = `rgba(151,220,255,${.68 * (1 - progress * .58)})`;
-    context.lineWidth = Math.max(1, worldRadius * .015);
-    context.beginPath();
-    context.ellipse(worldX, worldY, worldRadius * .94, worldRadius * .61, -.12, 0, Math.PI * 2);
-    context.stroke();
-
-    const nearby = world.buildingPlans.filter(building => ['A', 'B', 'C', 'D', 'E'].includes(building.name));
-    const minX = Math.min(...nearby.map(building => building.x));
-    const minY = Math.min(...nearby.map(building => building.y));
-    const spanX = Math.max(...nearby.map(building => building.x + building.w)) - minX || 1;
-    const spanY = Math.max(...nearby.map(building => building.y + building.h)) - minY || 1;
-    const mapPoint = (x, y) => ({
-      x: worldX + ((x - minX) / spanX - .5) * worldRadius * 1.42,
-      y: worldY + ((y - minY) / spanY - .5) * worldRadius * .72
+    // Painted continents and cloud bands make the distant body read as a planet,
+    // rather than a diagram of the outpost map.
+    const surfacePoint = (x, y) => ({
+      x: worldX + x * worldRadius * 1.35,
+      y: worldY + y * worldRadius * .88
     });
-    context.strokeStyle = `rgba(147,255,222,${.82 * (1 - progress * .6)})`;
-    context.lineWidth = Math.max(1, worldRadius * .012);
-    context.beginPath();
-    for (const path of world.paths) {
-      const start = path.axis === 'x' ? mapPoint(path.from, path.fixed) : mapPoint(path.fixed, path.from);
-      const end = path.axis === 'x' ? mapPoint(path.to, path.fixed) : mapPoint(path.fixed, path.to);
-      context.moveTo(start.x, start.y);
-      context.lineTo(end.x, end.y);
-    }
-    context.stroke();
-    for (const building of nearby) {
-      const left = mapPoint(building.x, building.y);
-      const right = mapPoint(building.x + building.w, building.y + building.h);
-      const bx = left.x;
-      const by = left.y;
-      const bw = right.x - left.x;
-      const bh = right.y - left.y;
-      context.fillStyle = building.name === 'E' ? 'rgba(255,222,151,.82)' : 'rgba(40,73,81,.95)';
-      context.strokeStyle = building.name === 'E'
-        ? `rgba(255,231,170,${1 - progress * .6})`
-        : `rgba(163,255,225,${.9 * (1 - progress * .6)})`;
-      context.lineWidth = Math.max(1, worldRadius * .014);
-      context.fillRect(bx, by, bw, bh);
-      context.strokeRect(bx, by, bw, bh);
+    context.fillStyle = `rgba(91,150,112,${.76 * (1 - progress * .55)})`;
+    const landmasses = [
+      [[-.78,-.06],[-.68,-.32],[-.46,-.37],[-.32,-.2],[-.38,-.02],[-.55,.08],[-.6,.32],[-.78,.22]],
+      [[-.26,-.55],[.02,-.52],[.2,-.37],[.15,-.2],[-.02,-.1],[-.12,.09],[-.3,-.02],[-.38,-.28]],
+      [[.28,-.28],[.53,-.38],[.78,-.2],[.7,.03],[.52,.12],[.45,.34],[.22,.28],[.12,.03]],
+      [[-.18,.2],[.02,.14],[.18,.31],[.12,.55],[-.05,.66],[-.22,.5],[-.32,.34]]
+    ];
+    for (const landmass of landmasses) {
       context.beginPath();
-      for (let row = 1; row < building.rows; row++) {
-        const y = by + bh * row / building.rows;
-        context.moveTo(bx, y);
-        context.lineTo(bx + bw, y);
-      }
-      for (let col = 1; col < building.cols; col++) {
-        const x = bx + bw * col / building.cols;
-        context.moveTo(x, by);
-        context.lineTo(x, by + bh);
-      }
+      landmass.forEach(([x, y], index) => {
+        const point = surfacePoint(x, y);
+        if (index === 0) context.moveTo(point.x, point.y);
+        else context.lineTo(point.x, point.y);
+      });
+      context.closePath();
+      context.fill();
+    }
+    context.strokeStyle = `rgba(225,245,255,${.3 * (1 - progress * .65)})`;
+    context.lineWidth = Math.max(1, worldRadius * .025);
+    for (const band of [[-.68,-.43,.05],[-.18,.22,.025],[.4,.7,-.03]]) {
+      const start = surfacePoint(band[0], band[2]);
+      const end = surfacePoint(band[1], band[2] + .04);
+      context.beginPath();
+      context.moveTo(start.x, start.y);
+      context.quadraticCurveTo(worldX, worldY + band[2] * worldRadius * .88, end.x, end.y);
       context.stroke();
     }
-    const outpostX = worldX + worldRadius * .78;
-    const outpostY = worldY + worldRadius * .25;
-    context.strokeStyle = `rgba(255,215,139,${1 - progress * .55})`;
-    context.fillStyle = `rgba(255,215,139,${.85 * (1 - progress * .5)})`;
-    context.lineWidth = Math.max(1, worldRadius * .014);
+    context.strokeStyle = `rgba(151,220,255,${.72 * (1 - progress * .58)})`;
+    context.lineWidth = Math.max(1, worldRadius * .018);
     context.beginPath();
-    context.moveTo(outpostX - worldRadius * .045, outpostY + worldRadius * .028);
-    context.lineTo(outpostX, outpostY - worldRadius * .045);
-    context.lineTo(outpostX + worldRadius * .045, outpostY + worldRadius * .028);
-    context.closePath();
-    context.fill();
+    context.ellipse(worldX, worldY, worldRadius * .94, worldRadius * .61, -.12, 0, Math.PI * 2);
     context.stroke();
     context.restore();
 

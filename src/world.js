@@ -1,4 +1,4 @@
-import { loadPlan, roomIdsIn } from './map-plan.js?v=20261084';
+import { loadPlan, roomIdsIn } from './map-plan.js?v=20261096';
 import { makeCat, makeGuitar, makeSimpleObject, makeWallPicture } from './object-geometry.js?v=20261056';
 import { hasClearFootprint } from './placement.js?v=20261038';
 import { SIMPLE_OBJECT_TYPES } from './object-types.js?v=20261039';
@@ -6,7 +6,7 @@ import { SIZE } from './world-constants.js?v=20261038';
 import { makeRocket } from './rocket.js?v=20261092';
 
 export { CELL_FT, SIZE } from './world-constants.js?v=20261038';
-export { parsePlan } from './map-plan.js?v=20261084';
+export { parsePlan } from './map-plan.js?v=20261096';
 
 const PAD = 12;
 const ROOM_LENGTHS = 10;
@@ -287,6 +287,15 @@ export async function createWorld() {
       : { x: lane - 1, y: low, w: 3, h: high - low });
   }
   for (const route of plan.junctionPaths) {
+    if (route.type === 'segment') {
+      if (![route.x1, route.y1, route.x2, route.y2].every(Number.isFinite) || (route.x1 !== route.x2 && route.y1 !== route.y2)) {
+        throw new Error(`Path segment must have finite coordinates and run horizontally or vertically: ${JSON.stringify(route)}`);
+      }
+      paths.push(route.x1 === route.x2
+        ? { axis: 'y', from: route.y1, to: route.y2, fixed: route.x1 }
+        : { axis: 'x', from: route.x1, to: route.x2, fixed: route.y1 });
+      continue;
+    }
     const building = placed[route.building];
     const exit = building?.exits.find(candidate => candidate.side === route.side);
     if (!building || !exit || !Number.isFinite(route.target)) throw new Error(`Junction path has an invalid building, exit, or target: ${JSON.stringify(route)}`);

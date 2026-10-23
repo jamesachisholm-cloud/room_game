@@ -189,5 +189,9 @@ B south C north corridor
 C west D east
 D north A south corridor
 
-# Optional extra paths: path <building> <side> <target>. None are defined right now.
+# Optional extra paths: path <building> <side> <target> joins an exterior door to a straight segment.
+# Add axis-aligned segment <x1> <y1> <x2> <y2> lines to create routed paths with bends.
 paths
+path E north 60.5
+segment 60.5 60.5 85.5 60.5
+segment 60.5 60.5 60.5 130.5

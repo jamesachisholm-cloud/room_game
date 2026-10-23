@@ -87,12 +87,13 @@ export function setupHud(canvas, controls) {
         document.body.classList.add('game-ended');
         ending.classList.add('visible');
         const robbed = player.gameOutcome === 'robbed';
+        ending.classList.toggle('rocket-ending', !robbed);
         endingKicker.textContent = robbed ? 'CAUGHT BY THE ROBBER' : 'MISSION COMPLETE';
-        endingTitle.textContent = robbed ? 'THE ROBBER GOT YOU' : 'THE STARS AWAIT';
+        endingTitle.textContent = robbed ? 'THE ROBBER GOT YOU' : '';
         endingMessage.innerHTML = robbed
           ? 'The robber found your pockets empty.<br>Try again and protect your loot.'
           : 'You made it out of Tzargarrot.<br>The next adventure is yours to choose.';
-        restartButton.textContent = robbed ? 'TRY AGAIN' : 'FLY AGAIN';
+        restartButton.textContent = robbed ? 'TRY AGAIN' : 'PLAY AGAIN';
       }
       const carriedCount = player.inventory.filter(Boolean).length;
       const robber = world.robber;

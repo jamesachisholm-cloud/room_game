@@ -104,6 +104,8 @@ export function parsePlan(text) {
       connections.push({ fromBuilding: parts[0], fromSide: parts[1], toBuilding: parts[2], toSide: parts[3], corridor: parts[4] === 'corridor' });
     } else if (section === 'paths' && parts[0] === 'path') {
       junctionPaths.push({ building: parts[1], side: parts[2], target: Number(parts[3]) });
+    } else if (section === 'paths' && parts[0] === 'segment') {
+      junctionPaths.push({ type: 'segment', x1: Number(parts[1]), y1: Number(parts[2]), x2: Number(parts[3]), y2: Number(parts[4]) });
     } else {
       throw new Error(`Unrecognized map line: ${rawLine}`);
     }

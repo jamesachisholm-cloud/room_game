@@ -19,6 +19,9 @@ canvas { display:block; width:100%; height:100%; }
 #ending h1 { margin:0 0 18px; color:#ffda9a; font-size:clamp(27px,6vw,48px); letter-spacing:.18em; text-shadow:0 0 24px #ffb85e66; }
 #ending p { color:#c5d6df; }
 #ending .ending-kicker { color:#9be6d4; font-size:12px; letter-spacing:.25em; }
+#ending.rocket-ending h1 { display:none; }
+#ending.rocket-ending .ending-kicker,
+#ending.rocket-ending #ending-message { color:#ffda9a; font-size:clamp(27px,6vw,48px); line-height:1.2; letter-spacing:.06em; text-shadow:0 0 24px #ffb85e66; }
 #ending button { margin-top:10px; color:#19130b; background:#ffd38b; }
 body.rocket-flight #hud, body.rocket-flight #crosshair, body.rocket-flight #compass, body.rocket-flight #help, body.rocket-flight #inventory, body.rocket-flight #map-link, body.rocket-flight #boarding-prompt { opacity:0; pointer-events:none; transition:opacity .6s ease; }
 body.game-ended #hud, body.game-ended #crosshair, body.game-ended #compass, body.game-ended #help, body.game-ended #inventory, body.game-ended #map-link, body.game-ended #boarding-prompt { display:none; }
