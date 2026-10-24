@@ -2,7 +2,7 @@
 # Repeated room IDs join bays into one room. Door offsets are 0-based from the bay edge.
 # Doorway format: door <room-ID> <room-ID> <offset> [width]. Offsets are 0-based; width defaults to 1 map unit. If the rooms share separate wall segments, the door uses the first one found scanning from the northwest.
 # Exit format: exit <north|east|south|west> <room-ID> [wall-offset]. Without an offset, the exit is centered on that room's boundary; an explicit offset is measured from the west or north edge of the building.
-# Wall picture format: picture <box|cat|dog|guitar|coffee-table|h|snake|apple|telephone|glasses|penny|fish|plant|toycar|anvil|clock|horseshoe> <bay-col> <bay-row> <side> <offset> <bottom-z> <width> <height>.
+# Wall picture format: picture <box|cat|dog|guitar|coffee-table|h|snake|apple|telephone|glasses|penny|fish|plant|toycar|anvil|clock|horseshoe|departure-board> <bay-col> <bay-row> <side> <offset> <bottom-z> <width> <height>.
 # Magic door format: magicdoor <side> <room-ID> <pair-ID> [toll]. A toll is a one-time credit charge for the pair.
 # Coffee table format: table <bay-col> <bay-row> <x> <y> <width> <depth> <height>.
 # Connection format: <building> <side> <building> <side> [corridor]. Adding corridor encloses that path with walls and a ceiling, one door wide.
@@ -172,6 +172,7 @@ exit north 01
 magicdoors
 magicdoor west 04 E-F 200
 objects
+picture departure-board 1 3 south 3.5 0.12 1.7 0.45
 end
 
 # Building F is a separate world: a single room reached only through E's magic door.

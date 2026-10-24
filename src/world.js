@@ -1,5 +1,5 @@
 import { loadPlan, roomIdsIn } from './map-plan.js?v=20261096';
-import { makeCat, makeGuitar, makeSimpleObject, makeWallPicture } from './object-geometry.js?v=20261056';
+import { makeCat, makeGuitar, makeSimpleObject, makeWallPicture } from './object-geometry.js?v=20261106';
 import { SIMPLE_OBJECT_TYPES } from './object-types.js?v=20261039';
 import { SIZE } from './world-constants.js?v=20261038';
 import { randomizeObjectPlacements } from './object-placement.js?v=20261101';

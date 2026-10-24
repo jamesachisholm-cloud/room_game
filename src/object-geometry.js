@@ -1,5 +1,58 @@
 import { SIZE } from './world-constants.js?v=20261038';
 
+const DEPARTURE_GLYPHS = {
+  A: ['010', '101', '111', '101', '101'], D: ['110', '101', '101', '101', '110'],
+  E: ['111', '100', '110', '100', '111'], H: ['101', '101', '111', '101', '101'],
+  K: ['101', '101', '110', '101', '101'], L: ['100', '100', '100', '100', '111'],
+  M: ['101', '111', '111', '101', '101'], N: ['101', '111', '111', '111', '101'],
+  P: ['110', '101', '110', '100', '100'], R: ['110', '101', '110', '101', '101'],
+  S: ['011', '100', '010', '001', '110'], T: ['111', '010', '010', '010', '010'],
+  U: ['101', '101', '101', '101', '111'], Z: ['111', '001', '010', '100', '111'],
+  '0': ['111', '101', '101', '101', '111'], '1': ['010', '110', '010', '010', '111'],
+  '2': ['110', '001', '010', '100', '111'], '3': ['110', '001', '010', '001', '110'],
+  '4': ['101', '101', '111', '001', '001'], '5': ['111', '100', '110', '001', '110'],
+  '8': ['111', '101', '111', '101', '111'], ':': ['000', '010', '000', '010', '000']
+};
+
+function addDepartureBoard(addLine, halfW, height) {
+  const horizontalScale = (halfW * 2) / 4.6;
+  const verticalScale = height / .9;
+  const scaleZ = value => value * verticalScale;
+  addLine([-halfW + .12 * horizontalScale, scaleZ(.04)], [halfW - .12 * horizontalScale, scaleZ(.04)], [halfW - .12 * horizontalScale, height - scaleZ(.04)], [-halfW + .12 * horizontalScale, height - scaleZ(.04)], [-halfW + .12 * horizontalScale, scaleZ(.04)]);
+  addLine([-halfW + .12 * horizontalScale, scaleZ(.55)], [halfW - .12 * horizontalScale, scaleZ(.55)]);
+  addLine([-halfW + .12 * horizontalScale, scaleZ(.37)], [halfW - .12 * horizontalScale, scaleZ(.37)]);
+  addLine([-halfW + .12 * horizontalScale, scaleZ(.19)], [halfW - .12 * horizontalScale, scaleZ(.19)]);
+  addLine([-1.02 * horizontalScale, scaleZ(.04)], [-1.02 * horizontalScale, scaleZ(.55)]);
+  addLine([.48 * horizontalScale, scaleZ(.04)], [.48 * horizontalScale, scaleZ(.55)]);
+
+  function addText(text, startX, bottomZ, advance = .21) {
+    const pixelWidth = .026;
+    for (let index = 0; index < text.length; index++) {
+      const glyph = DEPARTURE_GLYPHS[text[index]];
+      if (!glyph) continue;
+      for (let row = 0; row < glyph.length; row++) {
+        for (let column = 0; column < glyph[row].length; column++) {
+          if (glyph[row][column] !== '1') continue;
+          const x = (startX + index * advance + column * pixelWidth) * horizontalScale;
+          const z = scaleZ(bottomZ + (glyph.length - row - 1) * .022);
+          addLine([x, z], [x + pixelWidth * .75 * horizontalScale, z]);
+        }
+      }
+    }
+  }
+
+  addText('DEPARTURES', -.96, .60, .19);
+  addText('TZ204', -2.02, .40);
+  addText('MARS', -.88, .40);
+  addText('08:35', .67, .40);
+  addText('TZ208', -2.02, .22);
+  addText('LUNA', -.88, .22);
+  addText('09:10', .67, .22);
+  addText('TZ311', -2.02, .04);
+  addText('EARTH', -.88, .04);
+  addText('10:45', .67, .04);
+}
+
 export function makeCat(x, y, scale) {
   const cat = {
     cuboids: [
@@ -190,19 +243,23 @@ export function makeWallPicture(building, object) {
     throw new Error(`Picture in Building ${building.name} has an invalid wall side.`);
   }
   const point = (u, v) => alongX
-    ? { x: x + u, y, z: object.z + v }
+    ? { x: x + (object.side === 'south' && object.subject === 'departure-board' ? -u : u), y, z: object.z + v }
     : { x, y: y + u, z: object.z + v };
   const lines = [];
   const addLine = (...points) => lines.push(points.map(([u, v]) => point(u, v)));
   const halfW = object.w / 2;
   const h = object.h;
   addLine([-halfW, 0], [halfW, 0], [halfW, h], [-halfW, h], [-halfW, 0]);
-  const hangerScale = Math.min(object.w / 1.6, object.h / .72);
-  const hangRise = hangerScale * .22;
-  const stringHalfWidth = halfW * .42;
-  const pinRadius = hangerScale * .035;
-  addLine([-stringHalfWidth, h], [0, h + hangRise], [stringHalfWidth, h]);
-  addLine([-pinRadius, h + hangRise], [0, h + hangRise + pinRadius], [pinRadius, h + hangRise], [0, h + hangRise - pinRadius], [-pinRadius, h + hangRise]);
+  if (object.subject === 'departure-board') {
+    addDepartureBoard(addLine, halfW, h);
+  } else {
+    const hangerScale = Math.min(object.w / 1.6, object.h / .72);
+    const hangRise = hangerScale * .22;
+    const stringHalfWidth = halfW * .42;
+    const pinRadius = hangerScale * .035;
+    addLine([-stringHalfWidth, h], [0, h + hangRise], [stringHalfWidth, h]);
+    addLine([-pinRadius, h + hangRise], [0, h + hangRise + pinRadius], [pinRadius, h + hangRise], [0, h + hangRise - pinRadius], [-pinRadius, h + hangRise]);
+  }
   const originalArtworkWidth = 1.05;
   const originalArtworkHeight = .48;
   const originalArtworkScale = Math.min(originalArtworkWidth / 1.6, originalArtworkHeight / .72);
@@ -211,7 +268,9 @@ export function makeWallPicture(building, object) {
   const artworkHeight = originalArtworkHeight * artworkScale;
   const artworkBottom = (h - artworkHeight) / 2;
   const artworkY = fraction => artworkBottom + fraction * artworkHeight;
-  if (object.subject === 'dog') {
+  if (object.subject === 'departure-board') {
+    // Board details are drawn above, without picture artwork scaling.
+  } else if (object.subject === 'dog') {
     addLine([-.17 * scale, artworkY(.42)], [-.17 * scale, artworkY(.73)], [.17 * scale, artworkY(.73)], [.17 * scale, artworkY(.42)], [-.17 * scale, artworkY(.42)]);
     addLine([-.17 * scale, artworkY(.68)], [-.29 * scale, artworkY(.66)], [-.27 * scale, artworkY(.39)], [-.16 * scale, artworkY(.43)]);
     addLine([.17 * scale, artworkY(.68)], [.29 * scale, artworkY(.66)], [.27 * scale, artworkY(.39)], [.16 * scale, artworkY(.43)]);
