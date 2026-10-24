@@ -5,7 +5,7 @@
 # Wall picture format: picture <box|cat|dog|guitar|coffee-table|h|snake|apple|telephone|glasses|penny|fish|plant|toycar|anvil|clock|horseshoe|departure-board> <bay-col> <bay-row> <side> <offset> <bottom-z> <width> <height>.
 # Magic door format: magicdoor <side> <room-ID> <pair-ID> [toll]. A toll is a one-time credit charge for the pair.
 # Coffee table format: table <bay-col> <bay-row> <x> <y> <width> <depth> <height>.
-# Connection format: <building> <side> <building> <side> [corridor]. Adding corridor encloses that path with walls and a ceiling, one door wide.
+# Connection format: <building> <side> <building> <side> [corridor [no-path]]. Adding corridor encloses the route with walls and a ceiling; no-path hides its decorative floor stripe.
 
 building A 5 4
 rooms
@@ -114,7 +114,7 @@ end
 building D 6 4
 rooms
 01 02 03 04 05 06
-07 08 08 08 08 09
+07 08 08 08 11 09
 09 08 08 08 10 09
 09 09 09 09 09 09
 doors
@@ -127,6 +127,7 @@ door 06 09 3
 door 01 07 3
 door 07 08 3
 door 07 09 3
+door 10 11 3
 door 10 08 3
 exits
 exit east 09 20
@@ -187,10 +188,10 @@ objects
 end
 
 connections
-A east B west corridor
-B south C north corridor
+A east B west corridor no-path
+B south C north corridor no-path
 C west D east
-D north A south corridor
+D north A south corridor no-path
 
 # Optional extra paths: path <building> <side> <target> joins an exterior door to a straight segment.
 # Add axis-aligned segment <x1> <y1> <x2> <y2> lines to create routed paths with bends.

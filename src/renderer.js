@@ -578,7 +578,7 @@ export function createRenderer(canvas, world) {
       }
     }
     const pathStyle = { color: 'rgba(114,255,208,.58)', width: 1.4 };
-    pathLines ??= buildPathLines(world.paths);
+    pathLines ??= buildPathLines(world.paths.filter(path => path.drawPath !== false));
     context.strokeStyle = pathStyle.color;
     context.lineWidth = pathStyle.width;
     context.beginPath();

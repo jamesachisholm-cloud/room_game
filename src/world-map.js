@@ -132,11 +132,11 @@ export function buildWorldMap(plan, buildings, padding) {
       if (firstCell.y !== secondCell.y) throw new Error('East/west linked exits must line up on the same row.');
       const edgeX = building => connection.fromSide === 'east' ? building.x + building.w : building.x;
       const otherEdgeX = building => connection.toSide === 'east' ? building.x + building.w : building.x;
-      return { axis: 'x', from: edgeX(firstBuilding), to: otherEdgeX(secondBuilding), fixed: firstCell.y + .5, corridor: connection.corridor };
+      return { axis: 'x', from: edgeX(firstBuilding), to: otherEdgeX(secondBuilding), fixed: firstCell.y + .5, corridor: connection.corridor, drawPath: connection.drawPath };
     }
     if (firstCell.x !== secondCell.x) throw new Error('North/south linked exits must line up on the same column.');
     const edgeY = (building, side) => side === 'south' ? building.y + building.h : building.y;
-    return { axis: 'y', from: edgeY(firstBuilding, connection.fromSide), to: edgeY(secondBuilding, connection.toSide), fixed: firstCell.x + .5, corridor: connection.corridor };
+    return { axis: 'y', from: edgeY(firstBuilding, connection.fromSide), to: edgeY(secondBuilding, connection.toSide), fixed: firstCell.x + .5, corridor: connection.corridor, drawPath: connection.drawPath };
   });
   // A corridor is a door-wide path with solid wall cells on both sides and a ceiling over it.
   const corridors = [];

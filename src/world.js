@@ -1,13 +1,13 @@
-import { loadPlan, roomIdsIn } from './map-plan.js?v=20261096';
+import { loadPlan, roomIdsIn } from './map-plan.js?v=20261107';
 import { makeCat, makeGuitar, makeSimpleObject, makeWallPicture } from './object-geometry.js?v=20261106';
 import { SIMPLE_OBJECT_TYPES } from './object-types.js?v=20261039';
 import { SIZE } from './world-constants.js?v=20261038';
 import { randomizeObjectPlacements } from './object-placement.js?v=20261101';
-import { buildWorldMap } from './world-map.js?v=20261102';
+import { buildWorldMap } from './world-map.js?v=20261107';
 import { makeRocket } from './rocket.js?v=20261092';
 
 export { CELL_FT, SIZE } from './world-constants.js?v=20261038';
-export { parsePlan } from './map-plan.js?v=20261096';
+export { parsePlan } from './map-plan.js?v=20261107';
 
 const PAD = 12;
 const ROOM_LENGTHS = 10;
