@@ -125,8 +125,6 @@ export function createRenderer(canvas, world) {
   // Style strings are built once; index 0 is the default look for walls outside any building.
   const buildingHues = [168, ...roofedAreas.map(area => BUILDING_HUES[area.name] ?? 168)];
   const wallShades = buildingHues.map(hue => Array.from({ length: STROKE_LEVELS + 1 }, (_, level) => `hsl(${hue},40%,${8 + level / STROKE_LEVELS * 24}%)`));
-  const wallStrokes = buildingHues.map(hue => Array.from({ length: STROKE_LEVELS + 1 }, (_, level) => `hsla(${hue},55%,68%,${level / STROKE_LEVELS})`));
-  const doorStrokes = Array.from({ length: STROKE_LEVELS + 1 }, (_, level) => `rgba(114,255,208,${level / STROKE_LEVELS})`);
   const doorShades = Array.from({ length: STROKE_LEVELS + 1 }, (_, level) => `hsl(165,45%,${22 + level / STROKE_LEVELS * 22}%)`);
   const magicDoorShades = Array.from({ length: STROKE_LEVELS + 1 }, (_, level) => `hsl(285,45%,${24 + level / STROKE_LEVELS * 22}%)`);
 
@@ -319,15 +317,6 @@ export function createRenderer(canvas, world) {
     };
     const visibleDoors = new Map();
     const rayDoors = [];
-    // The previous column's wall, so a bright edge can be drawn wherever the surface changes.
-    let prevHit = false;
-    let prevKind = 0;
-    let prevSide = 0;
-    let prevDistance = 0;
-    let prevTop = 0;
-    let prevBottom = 0;
-    let prevColor = '';
-
     for (let sx = 0; sx < width; sx += step) {
       const screenOffset = (sx - width / 2) / focal;
       const cosDelta = 1 / Math.sqrt(1 + screenOffset * screenOffset);
@@ -452,41 +441,21 @@ export function createRenderer(canvas, world) {
       hit.distance = distance;
       hit.wallHit = wallHit;
       hitCount++;
-      if (!wallHit) {
-        prevHit = false;
-        continue;
-      }
+      if (!wallHit) continue;
       const wallHeight = Math.min(height * 1.8, focal * WALL_HEIGHT / distance);
       const top = horizon - wallHeight / 2;
       const bottom = horizon + wallHeight / 2;
       const alpha = Math.max(.2, .9 - distance * .0012 - (side ? .16 : 0));
       const level = Math.round(alpha * STROKE_LEVELS);
       const owner = buildingGrid[hitY * mapWidth + hitX];
-      const kind = doorPanel ? (magicDoorPanel ? 2 : 1) : 0;
       const colTop = doorPanel ? bottom - Math.min(wallHeight, focal * DOOR_HEIGHT / distance) : top;
-      const edgeColor = kind === 2 ? 'rgba(224,112,255,.95)' : kind === 1 ? doorStrokes[Math.max(Math.round(.35 * STROKE_LEVELS), level)] : wallStrokes[owner][level];
-      context.fillStyle = kind === 2 ? magicDoorShades[level] : kind === 1 ? doorShades[level] : wallShades[owner][level];
-      const columnHeight = bottom - colTop;
+      context.fillStyle = magicDoorPanel ? magicDoorShades[level] : doorPanel ? doorShades[level] : wallShades[owner][level];
       // Whole device pixels, so fractional scaling never leaves a see-through seam between columns.
       const left = Math.floor(sx * pixelRatio) / pixelRatio;
       const right = Math.ceil((sx + step + 1) * pixelRatio) / pixelRatio;
       const fillTop = Math.floor(colTop * pixelRatio) / pixelRatio;
       const fillBottom = Math.ceil(bottom * pixelRatio) / pixelRatio;
       context.fillRect(left, fillTop, right - left, fillBottom - fillTop);
-      const jump = Math.max(.6, Math.min(distance, prevDistance) * .25);
-      if (prevHit && (kind !== prevKind || Math.abs(distance - prevDistance) > jump)) {
-        const nearer = distance < prevDistance;
-        const edgeTop = nearer ? colTop : prevTop;
-        context.fillStyle = nearer ? edgeColor : prevColor;
-        context.fillRect(sx - 1, edgeTop, 2, (nearer ? bottom : prevBottom) - edgeTop);
-      }
-      prevHit = true;
-      prevKind = kind;
-      prevSide = side;
-      prevDistance = distance;
-      prevTop = colTop;
-      prevBottom = bottom;
-      prevColor = edgeColor;
     }
 
     // Polylines are projected with plain numbers (no per-point objects) so phones avoid garbage-collection stalls.
