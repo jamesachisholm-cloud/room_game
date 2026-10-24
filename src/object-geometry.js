@@ -7,7 +7,8 @@ const DEPARTURE_GLYPHS = {
   M: ['101', '111', '111', '101', '101'], N: ['101', '111', '111', '111', '101'],
   P: ['110', '101', '110', '100', '100'], R: ['110', '101', '110', '101', '101'],
   S: ['011', '100', '010', '001', '110'], T: ['111', '010', '010', '010', '010'],
-  U: ['101', '101', '101', '101', '111'], Z: ['111', '001', '010', '100', '111'],
+  U: ['101', '101', '101', '101', '111'], V: ['101', '101', '101', '101', '010'],
+  Z: ['111', '001', '010', '100', '111'],
   '0': ['111', '101', '101', '101', '111'], '1': ['010', '110', '010', '010', '111'],
   '2': ['110', '001', '010', '100', '111'], '3': ['110', '001', '010', '001', '110'],
   '4': ['101', '101', '111', '001', '001'], '5': ['111', '100', '110', '001', '110'],
@@ -18,12 +19,11 @@ function addDepartureBoard(addLine, halfW, height) {
   const horizontalScale = (halfW * 2) / 4.6;
   const verticalScale = height / .9;
   const scaleZ = value => value * verticalScale;
-  addLine([-halfW + .12 * horizontalScale, scaleZ(.04)], [halfW - .12 * horizontalScale, scaleZ(.04)], [halfW - .12 * horizontalScale, height - scaleZ(.04)], [-halfW + .12 * horizontalScale, height - scaleZ(.04)], [-halfW + .12 * horizontalScale, scaleZ(.04)]);
-  addLine([-halfW + .12 * horizontalScale, scaleZ(.55)], [halfW - .12 * horizontalScale, scaleZ(.55)]);
-  addLine([-halfW + .12 * horizontalScale, scaleZ(.37)], [halfW - .12 * horizontalScale, scaleZ(.37)]);
-  addLine([-halfW + .12 * horizontalScale, scaleZ(.19)], [halfW - .12 * horizontalScale, scaleZ(.19)]);
-  addLine([-1.02 * horizontalScale, scaleZ(.04)], [-1.02 * horizontalScale, scaleZ(.55)]);
-  addLine([.48 * horizontalScale, scaleZ(.04)], [.48 * horizontalScale, scaleZ(.55)]);
+  const left = -halfW + .12 * horizontalScale;
+  const right = halfW - .12 * horizontalScale;
+  addLine([left, scaleZ(.04)], [right, scaleZ(.04)], [right, height - scaleZ(.04)], [left, height - scaleZ(.04)], [left, scaleZ(.04)]);
+  for (const divider of [.68, .52, .36, .20, .04]) addLine([left, scaleZ(divider)], [right, scaleZ(divider)]);
+  for (const column of [-1.02, .48]) addLine([column * horizontalScale, scaleZ(.04)], [column * horizontalScale, scaleZ(.52)]);
 
   function addText(text, startX, bottomZ, advance = .21) {
     const pixelWidth = .026;
@@ -41,16 +41,19 @@ function addDepartureBoard(addLine, halfW, height) {
     }
   }
 
-  addText('DEPARTURES', -.96, .60, .19);
-  addText('TZ204', -2.02, .40);
-  addText('MARS', -.88, .40);
-  addText('08:35', .67, .40);
-  addText('TZ208', -2.02, .22);
-  addText('LUNA', -.88, .22);
-  addText('09:10', .67, .22);
-  addText('TZ311', -2.02, .04);
-  addText('EARTH', -.88, .04);
-  addText('10:45', .67, .04);
+  addText('DEPARTURES', -.96, .73, .19);
+  const rows = [
+    ['TZ204', 'MARS', '08:35'],
+    ['TZ208', 'LUNA', '09:10'],
+    ['TZ311', 'EARTH', '10:45'],
+    ['TZ415', 'VENUS', '12:20']
+  ];
+  rows.forEach(([flight, destination, time], index) => {
+    const bottom = .565 - index * .16;
+    addText(flight, -2.02, bottom);
+    addText(destination, -.88, bottom);
+    addText(time, .67, bottom);
+  });
 }
 
 export function makeCat(x, y, scale) {
