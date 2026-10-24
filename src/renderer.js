@@ -10,6 +10,7 @@ const WALL_HEIGHT = 1;
 const DOOR_HEIGHT = WALL_HEIGHT;
 const FOV = Math.PI / 3;
 const BUILDING_HUES = { A: 168, B: 212, C: 124, D: 246, E: 84, F: 302 };
+const PROFILE_RENDERER = new URLSearchParams(location.search).get('perf') === '1';
 // Map north is -y, so angles are measured from +x (east) towards +y (south).
 // Craters are [x, y, radius] in units of the moon's radius.
 const MOONS = [
@@ -82,6 +83,66 @@ export function createRenderer(canvas, world) {
   const hitPool = [];
   let pathLines = null;
   let outlineLines = null;
+  let profileWindowStartedAt = performance.now();
+  let profileSamples = [];
+  let profileSummary = 'Collecting frame timings…';
+  const profilePanel = PROFILE_RENDERER ? document.createElement('div') : null;
+  const profileText = PROFILE_RENDERER ? document.createElement('pre') : null;
+  const profileCopyButton = PROFILE_RENDERER ? document.createElement('button') : null;
+  if (profilePanel) {
+    profilePanel.setAttribute('aria-label', 'Renderer performance timings');
+    profilePanel.style.cssText = 'position:fixed;z-index:20;top:12px;right:12px;padding:10px 12px;color:#d8fff2;background:#07100fee;border:1px solid #70a9a088;font:12px/1.5 ui-monospace,monospace;pointer-events:auto';
+    profileText.style.cssText = 'margin:0 0 8px;white-space:pre';
+    profileText.textContent = 'Renderer profiling enabled\nCollecting frame timings…';
+    profileCopyButton.type = 'button';
+    profileCopyButton.textContent = 'Copy timings';
+    profileCopyButton.style.cssText = 'padding:4px 8px;color:#d8fff2;background:#18352d;border:1px solid #70a9a088;font:inherit;cursor:pointer';
+    profileCopyButton.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(profileSummary);
+        profileCopyButton.textContent = 'Copied';
+      } catch {
+        profileCopyButton.textContent = 'Clipboard unavailable';
+      }
+    });
+    profilePanel.append(profileText, profileCopyButton);
+    document.body.append(profilePanel);
+  }
+
+  function reportFrameProfile(phases, frameMs, rayStep) {
+    if (!PROFILE_RENDERER) return;
+    profileSamples.push({ ...phases, frameMs });
+    const now = performance.now();
+    if (now - profileWindowStartedAt < 2000) return;
+
+    const average = key => profileSamples.reduce((total, sample) => total + sample[key], 0) / profileSamples.length;
+    const sortedFrameTimes = profileSamples.map(sample => sample.frameMs).sort((a, b) => a - b);
+    const p95 = sortedFrameTimes[Math.floor((sortedFrameTimes.length - 1) * .95)];
+    const summary = {
+      frames: profileSamples.length,
+      'draw avg ms': +average('frameMs').toFixed(2),
+      'draw p95 ms': +p95.toFixed(2),
+      'rAF interval avg ms': +frameAverage.toFixed(2),
+      'sky ms': +average('skyMs').toFixed(2),
+      'ray + walls + floors ms': +average('rayMs').toFixed(2),
+      'projected lines ms': +average('lineMs').toFixed(2),
+      quality: +quality.toFixed(2),
+      rayStep
+    };
+    profileSummary = [
+      'RENDERER PERFORMANCE (2s average)',
+      `frames: ${summary.frames}    draw avg: ${summary['draw avg ms']} ms    p95: ${summary['draw p95 ms']} ms`,
+      `frame interval: ${summary['rAF interval avg ms']} ms    quality: ${summary.quality}    ray step: ${rayStep}`,
+      `sky: ${summary['sky ms']} ms`,
+      `ray + walls + floors: ${summary['ray + walls + floors ms']} ms`,
+      `projected lines: ${summary['projected lines ms']} ms`
+    ].join('\n');
+    profileText.textContent = profileSummary;
+    profileCopyButton.textContent = 'Copy timings';
+    console.table([summary]);
+    profileSamples = [];
+    profileWindowStartedAt = now;
+  }
 
   // Flat lookup tables avoid string keys and nested arrays inside the ray loop.
   const mapWidth = world.width;
@@ -170,6 +231,8 @@ export function createRenderer(canvas, world) {
 
   function draw(player) {
     const frameStart = performance.now();
+    const framePhases = PROFILE_RENDERER ? {} : null;
+    let phaseStartedAt = frameStart;
     if (previousTime) {
       frameAverage += (Math.min(100, frameStart - previousTime) - frameAverage) * .1;
       if (++framesSinceAdjust >= 45) {
@@ -274,6 +337,10 @@ export function createRenderer(canvas, world) {
     }
     context.fillStyle = groundGradient;
     context.fillRect(0, horizon, width, height - horizon);
+    if (framePhases) {
+      phaseStartedAt = performance.now();
+      framePhases.skyMs = phaseStartedAt - frameStart;
+    }
 
     // Rays are 2px or 4px apart; strokes are always 2px every 4px, so the wall pattern is identical at both.
     // Scale ray spacing continuously with the adaptive quality setting. The old
@@ -435,6 +502,11 @@ export function createRenderer(canvas, world) {
       const fillTop = Math.floor(colTop * pixelRatio) / pixelRatio;
       const fillBottom = Math.ceil(bottom * pixelRatio) / pixelRatio;
       context.fillRect(left, fillTop, right - left, fillBottom - fillTop);
+    }
+    if (framePhases) {
+      const rayEndedAt = performance.now();
+      framePhases.rayMs = rayEndedAt - phaseStartedAt;
+      phaseStartedAt = rayEndedAt;
     }
 
     // Polylines are projected with plain numbers (no per-point objects) so phones avoid garbage-collection stalls.
@@ -663,6 +735,10 @@ export function createRenderer(canvas, world) {
       const alpha = Math.min(.4, player.teleportFlash * 1.15);
       context.fillStyle = `rgba(214,128,255,${alpha})`;
       context.fillRect(0, 0, width, height);
+    }
+    if (framePhases) {
+      framePhases.lineMs = performance.now() - phaseStartedAt;
+      reportFrameProfile(framePhases, performance.now() - frameStart, step);
     }
   }
 
