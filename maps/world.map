@@ -47,21 +47,20 @@ end
 
 building B 6 4
 rooms
-08 01 01 01 01 02
+01 01 01 01 01 02
 01 01 03 03 04 04
-01 01 03 03 04 04
+10 06 03 03 04 04
 05 06 03 03 07 09
 doors
 door 01 02 3
-door 01 08 3
 door 03 06 3
 door 03 04 3
-door 01 05 3
+door 10 05 3
 door 01 06 3
 door 03 07 3
 door 04 07 3
 door 07 09 3
-door 08 01 3
+door 10 01 3
 exits
 exit west 01 10
 exit south 05
