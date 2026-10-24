@@ -1,4 +1,6 @@
-const PATH_HALF_WIDTH = .5;
+import { drawDoorGlyph } from './door-renderer.js?v=20261101';
+import { buildPathLines } from './path-geometry.js?v=20261101';
+
 // Phones render at a lower resolution and sample fewer rays and line points.
 const COARSE_POINTER = matchMedia('(pointer: coarse)').matches;
 const NEAR_DEPTH = .26;
@@ -6,29 +8,6 @@ const OBJECT_RANGE = 50;
 const STROKE_LEVELS = 32;
 const WALL_HEIGHT = 1;
 const DOOR_HEIGHT = WALL_HEIGHT;
-const DOOR_GLYPHS = {
-  A: [[[0, 0], [.5, 1], [1, 0]], [[.22, .42], [.78, .42]]],
-  B: [[[0, 0], [0, 1], [.62, 1], [.82, .88], [.82, .66], [.62, .52], [0, .52]], [[.62, .52], [.82, .36], [.82, .12], [.62, 0], [0, 0]]],
-  C: [[[.9, .9], [.7, 1], [.2, 1], [0, .8], [0, .2], [.2, 0], [.7, 0], [.9, .1]]],
-  D: [[[0, 0], [0, 1], [.58, 1], [.85, .8], [.85, .2], [.58, 0], [0, 0]]],
-  E: [[[.9, 1], [0, 1], [0, 0], [.9, 0]], [[0, .5], [.72, .5]]],
-  F: [[[0, 0], [0, 1], [.9, 1]], [[0, .5], [.72, .5]]]
-};
-const ESCAPE_DOOR_GLYPHS = {
-  E: [[[0, 0], [0, 4], [2, 4]], [[0, 2], [1.6, 2]], [[0, 0], [2, 0]]],
-  a: [[[0, 1], [0, 3], [2, 3], [2, 0], [0, 0], [0, 1], [2, 1]]],
-  c: [[[2, 3], [0, 3], [0, 0], [2, 0]]],
-  s: [[[2, 3], [0, 3], [0, 2], [2, 2], [2, 0], [0, 0]]],
-  p: [[[0, 0], [0, 3], [2, 3], [2, 1.5], [0, 1.5]]],
-  e: [[[0, 1.5], [2, 1.5], [2, 3], [0, 3], [0, 0], [2, 0]]],
-  '2': [[[0, 3], [2, 3], [2, 1.5], [0, 1.5], [0, 0], [2, 0]]],
-  '0': [[[0, 0], [0, 3], [2, 3], [2, 0], [0, 0]]],
-  C: [[[2, 4], [0, 4], [0, 0], [2, 0]]],
-  r: [[[0, 0], [0, 3], [2, 3], [2, 2]]],
-  d: [[[2, 0], [2, 3], [0, 3], [0, 0], [2, 0]]],
-  i: [[[1, 0], [1, 3]], [[.5, 4], [1.5, 4]]],
-  t: [[[1, 0], [1, 4]], [[0, 3], [2, 3]]]
-};
 const FOV = Math.PI / 3;
 const BUILDING_HUES = { A: 168, B: 212, C: 124, D: 246, E: 84, F: 302 };
 // Map north is -y, so angles are measured from +x (east) towards +y (south).
@@ -526,132 +505,8 @@ export function createRenderer(canvas, world) {
         }
       }
     }
-    function drawDoorGlyph(portal) {
-      const horizontalX = portal.side === 'north' || portal.side === 'south';
-      const outwardX = portal.side === 'west' ? -1 : portal.side === 'east' ? 1 : 0;
-      const outwardY = portal.side === 'north' ? -1 : portal.side === 'south' ? 1 : 0;
-      const onOutside = (player.x - portal.x) * outwardX + (player.y - portal.y) * outwardY >= 0;
-      const faceDirection = onOutside ? 1 : -1;
-      const glyphDirection = (portal.side === 'north' || portal.side === 'east' ? -1 : 1) * faceDirection;
-      const style = { color: '#fff', width: 1.2 };
-      if (portal.building === 'E' && portal.target?.building === 'F') {
-        const cell = .012;
-        const advance = .048;
-        const drawText = text => {
-          const lines = text.split('\n');
-          for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
-            const line = lines[lineIndex];
-            const baseline = .736 - lineIndex * .08;
-            for (let index = 0; index < line.length; index++) {
-              const strokes = ESCAPE_DOOR_GLYPHS[line[index]];
-              if (!strokes) continue;
-              for (const stroke of strokes) {
-                const points = stroke.map(([x, y]) => {
-                  const offset = (index * advance - line.length * advance / 2 + advance / 2 + (x - 1) * cell) * glyphDirection;
-                  return {
-                    x: portal.x + outwardX * .535 * faceDirection + (horizontalX ? offset : 0),
-                    y: portal.y + outwardY * .535 * faceDirection + (horizontalX ? 0 : offset),
-                    z: baseline + y * cell
-                  };
-                });
-                drawProjectedPolyline(points, style, false, 3);
-              }
-            }
-          }
-        };
-        drawText('Flight\n\n\n200\n\nCredits');
-        return;
-      }
-      const strokes = DOOR_GLYPHS[portal.target?.building?.[0]];
-      if (!strokes) return;
-      for (const stroke of strokes) {
-        const points = stroke.map(([x, y]) => {
-          const offset = (x - .5) * .09 * glyphDirection;
-          return {
-            x: portal.x + outwardX * .535 * faceDirection + (horizontalX ? offset : 0),
-            y: portal.y + outwardY * .535 * faceDirection + (horizontalX ? 0 : offset),
-            z: .56 + y * .08
-          };
-        });
-        drawProjectedPolyline(points, style, false, 3);
-      }
-    }
     const pathStyle = { color: 'rgba(114,255,208,.58)', width: 1.4 };
-    function trimJunctionEnd(path, endpoint, otherEndpoint) {
-      const crossing = world.paths.some(other => {
-        if (other.axis === path.axis) return false;
-        const low = Math.min(other.from, other.to);
-        const high = Math.max(other.from, other.to);
-        return other.fixed === endpoint && path.fixed > low && path.fixed < high;
-      });
-      return crossing ? endpoint + Math.sign(otherEndpoint - endpoint) * PATH_HALF_WIDTH : endpoint;
-    }
-    pathLines ??= (() => {
-      const lines = [];
-      const innerCornerTrims = new Map();
-      const cornerJoins = [];
-      const trimKey = (pathIndex, endpoint, offset) => `${pathIndex}:${endpoint}:${offset}`;
-
-      // Find 90-degree shared endpoints before drawing the parallel path edges.
-      for (let first = 0; first < world.paths.length; first++) {
-        for (let second = first + 1; second < world.paths.length; second++) {
-          const a = world.paths[first];
-          const b = world.paths[second];
-          if (a.axis === b.axis) continue;
-          const horizontalIndex = a.axis === 'x' ? first : second;
-          const verticalIndex = a.axis === 'y' ? first : second;
-          const horizontal = world.paths[horizontalIndex];
-          const vertical = world.paths[verticalIndex];
-          for (const x of [horizontal.from, horizontal.to]) {
-            for (const y of [vertical.from, vertical.to]) {
-              if (vertical.fixed !== x || horizontal.fixed !== y) continue;
-              const horizontalInward = Math.sign((x === horizontal.from ? horizontal.to : horizontal.from) - x);
-              const verticalInward = Math.sign((y === vertical.from ? vertical.to : vertical.from) - y);
-              for (const side of [-1, 1]) {
-                const verticalSide = side * horizontalInward * verticalInward;
-                if (side === verticalInward) {
-                  // The inner edges already intersect; stop both there to avoid doubled strokes.
-                  innerCornerTrims.set(trimKey(horizontalIndex, x, side), x + verticalSide * PATH_HALF_WIDTH);
-                  innerCornerTrims.set(trimKey(verticalIndex, y, verticalSide), y + side * PATH_HALF_WIDTH);
-                } else {
-                  const corner = [
-                    { x, y: y + side * PATH_HALF_WIDTH, z: 0 },
-                    { x: x + verticalSide * PATH_HALF_WIDTH, y: y + side * PATH_HALF_WIDTH, z: 0 },
-                    { x: x + verticalSide * PATH_HALF_WIDTH, y, z: 0 }
-                  ];
-                  cornerJoins.push(corner);
-                }
-              }
-            }
-          }
-        }
-      }
-
-      for (let pathIndex = 0; pathIndex < world.paths.length; pathIndex++) {
-        const path = world.paths[pathIndex];
-        for (const offset of [-PATH_HALF_WIDTH, PATH_HALF_WIDTH]) {
-          const from = innerCornerTrims.get(trimKey(pathIndex, path.from, offset))
-            ?? trimJunctionEnd(path, path.from, path.to);
-          const to = innerCornerTrims.get(trimKey(pathIndex, path.to, offset))
-            ?? trimJunctionEnd(path, path.to, path.from);
-          const low = Math.min(from, to);
-          const high = Math.max(from, to);
-          const samples = [];
-          for (let value = low; value < high; value += 4) samples.push(value);
-          samples.push(high);
-          const points = [];
-          for (const value of samples) {
-            const x = path.axis === 'x' ? value : path.fixed + offset;
-            const y = path.axis === 'x' ? path.fixed + offset : value;
-            points.push({ x, y, z: 0 });
-          }
-          lines.push(points);
-        }
-      }
-
-      lines.push(...cornerJoins);
-      return lines;
-    })();
+    pathLines ??= buildPathLines(world.paths);
     context.strokeStyle = pathStyle.color;
     context.lineWidth = pathStyle.width;
     context.beginPath();
@@ -802,7 +657,7 @@ export function createRenderer(canvas, world) {
       context.lineTo(door.left, leftBottom);
       context.closePath();
       context.stroke();
-      if (door.magic) drawDoorGlyph(magicDoorById.get(door.id));
+      if (door.magic) drawDoorGlyph(magicDoorById.get(door.id), player, drawProjectedPolyline);
     }
     if (player.teleportFlash > 0) {
       const alpha = Math.min(.4, player.teleportFlash * 1.15);
