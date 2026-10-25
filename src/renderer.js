@@ -74,6 +74,7 @@ export function createRenderer(canvas, world) {
   let cloudSprites = [];
   // Quality lowers the ray count on slow devices and raises it again when frames are fast.
   let quality = 1;
+  let pixelRatioCap = 1.25;
   let frameAverage = 16.7;
   let framesSinceAdjust = 0;
   let previousTime = 0;
@@ -169,14 +170,15 @@ export function createRenderer(canvas, world) {
   const magicDoorShades = Array.from({ length: STROKE_LEVELS + 1 }, (_, level) => `hsl(285,45%,${24 + level / STROKE_LEVELS * 22}%)`);
 
   function resize() {
-    // A 2x backing canvas quadruples the pixels painted each frame. Capping
-    // desktop rendering at 1.5x keeps the image sharp while reducing that work.
-    pixelRatio = Math.min(devicePixelRatio || 1, 1.5);
+    // Keep the backing canvas modest on high-DPI displays. Lower tiers reduce
+    // pixel work as well as ray and line work on slower machines.
+    pixelRatioCap = quality < .55 ? .9 : quality < .75 ? 1 : 1.25;
+    pixelRatio = Math.min(devicePixelRatio || 1, pixelRatioCap);
     width = innerWidth;
     height = innerHeight;
     horizon = height * .5;
     focal = width / (2 * Math.tan(FOV / 2));
-    rayCount = Math.min(COARSE_POINTER ? 480 : 900, Math.max(360, Math.floor(width * .72)));
+    rayCount = Math.min(COARSE_POINTER ? 480 : 720, Math.max(360, Math.floor(width * .72)));
     canvas.width = Math.floor(width * pixelRatio);
     canvas.height = Math.floor(height * pixelRatio);
     context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
@@ -237,8 +239,11 @@ export function createRenderer(canvas, world) {
       frameAverage += (Math.min(100, frameStart - previousTime) - frameAverage) * .1;
       if (++framesSinceAdjust >= 45) {
         framesSinceAdjust = 0;
+        const oldPixelRatioCap = pixelRatioCap;
         if (frameAverage > 22) quality = Math.max(.45, quality - .1);
         else if (frameAverage < 17.5) quality = Math.min(1, quality + .05);
+        const nextPixelRatioCap = quality < .55 ? .9 : quality < .75 ? 1 : 1.25;
+        if (nextPixelRatioCap !== oldPixelRatioCap) resize();
       }
     }
     previousTime = frameStart;
@@ -519,7 +524,7 @@ export function createRenderer(canvas, world) {
       return true;
     };
     const screenEdge = (width / 2 + 10) / focal;
-    const sampleSpacing = COARSE_POINTER ? 5 : 3;
+    const sampleSpacing = (COARSE_POINTER ? 5 : 3) / quality;
     function drawProjectedPolyline(points, style, ignoreWalls = false, subdivisions = 10) {
       context.strokeStyle = style.color;
       context.lineWidth = style.width;
