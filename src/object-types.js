@@ -1,4 +1,5 @@
 export const OBJECT_METADATA = {
+  ticket: { defaultValue: 0, name: 'flight ticket', inventoryName: 'flight ticket' },
   box: { defaultValue: 5, name: 'box', inventoryName: 'box', pictureSubject: 'box' },
   cat: { defaultValue: 20, name: 'cat', inventoryName: 'cat', pictureSubject: 'cat' },
   table: { defaultValue: 15, name: 'coffee table', inventoryName: 'coffee table', pictureSubject: 'coffee-table' },

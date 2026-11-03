@@ -83,6 +83,32 @@ export function makeCat(x, y, scale) {
   return cat;
 }
 
+export function makeTicketSeller(x, y) {
+  const point = (dx, dy, z) => ({ x: x + dx, y: y + dy, z });
+  const lines = [];
+  const addLine = (...points) => lines.push(points.map(([dx, dy, z]) => point(dx, dy, z)));
+  const head = Array.from({ length: 10 }, (_, index) => {
+    const angle = index * Math.PI * 2 / 10;
+    return [Math.cos(angle) * .23, -.06 + Math.sin(angle) * .19, 1.67 + Math.cos(angle) * .025];
+  });
+  addLine(...head, head[0]);
+  addLine([0, -.06, 1.86], [0, -.06, 1.47]);
+  addLine([-.38, .03, 1.42], [.38, .03, 1.42], [.3, .12, .92], [-.3, .12, .92], [-.38, .03, 1.42]);
+  addLine([-.3, .12, .92], [-.39, .3, .92], [-.46, .43, .98]);
+  addLine([.3, .12, .92], [.39, .3, .92], [.46, .43, .98]);
+  addLine([-.25, .11, .88], [-.3, .45, .42], [0, .52, .42], [.3, .45, .42], [.25, .11, .88]);
+  addLine([-.39, .3, 1.07], [.39, .3, 1.07]);
+  return {
+    type: 'ticketSeller', x, y, price: 200, held: false, lines,
+    cuboids: [
+      { x, y: y + .56, w: 2.55, d: .72, z: .82, h: .14 },
+      { x, y: y + .91, w: 2.35, d: .12, z: .08, h: .74 },
+      { x: x - 1.05, y: y + .56, w: .12, d: .64, z: 0, h: .82 },
+      { x: x + 1.05, y: y + .56, w: .12, d: .64, z: 0, h: .82 }
+    ]
+  };
+}
+
 export function makeGuitar(x, y, scale) {
   const lines = [];
   const addLine = (...points) => lines.push(points.map(([px, py, z]) => ({

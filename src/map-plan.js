@@ -91,7 +91,11 @@ export function parsePlan(text) {
     } else if (section === 'exits' && current && parts[0] === 'exit') {
       current.exits.push({ side: parts[1], roomId: parts[2].padStart(2, '0'), wallOffset: parts[3] === undefined ? null : Number(parts[3]) });
     } else if (section === 'magicdoors' && current && parts[0] === 'magicdoor') {
-      current.magicDoors.push({ side: parts[1], roomId: parts[2].padStart(2, '0'), pairId: parts[3], toll: Number(parts[4] ?? 0) });
+      current.magicDoors.push({
+        side: parts[1], roomId: parts[2].padStart(2, '0'), pairId: parts[3],
+        requiredItem: parts[4] === 'ticket' ? 'ticket' : null,
+        toll: parts[4] === 'ticket' ? 0 : Number(parts[4] ?? 0)
+      });
     } else if (section === 'objects' && current && ['box', 'table'].includes(parts[0])) {
       current.objects.push({ type: parts[0], col: Number(parts[1]), row: Number(parts[2]), x: Number(parts[3]), y: Number(parts[4]), w: Number(parts[5]), d: Number(parts[6]), h: Number(parts[7]), value: Number(parts[8] ?? OBJECT_METADATA[parts[0]].defaultValue) });
     } else if (section === 'objects' && current && ['cat', 'guitar'].includes(parts[0])) {
@@ -180,6 +184,7 @@ export function parsePlan(text) {
       if (!['north', 'east', 'south', 'west'].includes(gate.side) || !roomIds.includes(gate.roomId) || !gate.pairId) {
         throw new Error(`Building ${building.name} has a magic door with an invalid side, room ID, or pair ID.`);
       }
+      if (gate.requiredItem && gate.requiredItem !== 'ticket') throw new Error(`Building ${building.name} has a magic door with an unsupported required item.`);
       const edgeRooms = gate.side === 'north' ? building.grid[0]
         : gate.side === 'south' ? building.grid[building.rows - 1]
         : gate.side === 'west' ? building.grid.map(row => row[0])

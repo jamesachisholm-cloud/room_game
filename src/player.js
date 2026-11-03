@@ -1,5 +1,5 @@
-import { CELL_FT } from './world.js?v=20261107';
-import { OBJECT_METADATA } from './object-types.js?v=20261039';
+import { CELL_FT } from './world.js?v=20261108';
+import { OBJECT_METADATA } from './object-types.js?v=20261108';
 import { hasClearFootprint } from './placement.js?v=20261038';
 import { createRobber, stealInventoryObjects, updateRobber } from './robber.js?v=20261095';
 
@@ -17,6 +17,34 @@ export function attachPlayerControls(player, canvas, world) {
   const VIEW_FOV = Math.PI / 3; // must match renderer FOV
   const TAP_WALK_CELLS_PER_WIDTH = 16;
   const ROCKET_INTERACTION_RANGE = 2.2;
+  function hasTicket() {
+    return player.inventory.some(object => object?.type === 'ticket');
+  }
+
+  function purchaseTicket() {
+    if (!world.ticketSeller || Math.hypot(player.x - world.ticketSeller.x, player.y - world.ticketSeller.y) >= 2.2) return false;
+    const ticketCost = world.ticketSeller.price;
+    if (hasTicket()) {
+      setMessage('You already have a flight ticket');
+      return true;
+    }
+    if (player.credits < ticketCost) {
+      setMessage(`Ticket ${ticketCost} credits · you have ${player.credits}`);
+      return true;
+    }
+    const slot = player.inventory.indexOf(null);
+    if (slot < 0) {
+      setMessage('Inventory full · make room for the flight ticket');
+      return true;
+    }
+    player.credits -= ticketCost;
+    player.creditFlashId += 1;
+    player.inventory[slot] = { type: 'ticket', value: 0, held: true };
+    player.selectedInventorySlot = slot;
+    player.inventoryFlashId += 1;
+    setMessage('Flight ticket purchased · keep it safe');
+    return true;
+  }
 
   function setMessage(message) {
     player.actionMessage = message;
@@ -31,7 +59,7 @@ export function attachPlayerControls(player, canvas, world) {
     if (!world.rocket || Math.hypot(player.x - world.rocket.entranceX, player.y - world.rocket.entranceY) >= ROCKET_INTERACTION_RANGE) return false;
     keysDown.clear();
     walkTarget = null;
-    player.launching = { elapsed: 0 };
+    player.launching = { elapsed: 0, cameraX: player.x, cameraY: player.y, cameraAngle: player.a };
     player.actionMessageTimer = 0;
     return true;
   }
@@ -55,7 +83,7 @@ export function attachPlayerControls(player, canvas, world) {
   }
 
   function pickUpObject() {
-    if (player.launching || player.gameComplete || boardRocket()) return;
+    if (player.launching || player.gameComplete || purchaseTicket() || boardRocket()) return;
     const slot = player.inventory.indexOf(null);
     if (slot < 0) {
       setMessage('Inventory full · 10 of 10 objects');
@@ -103,6 +131,10 @@ export function attachPlayerControls(player, canvas, world) {
       setMessage(`Inventory slot ${slot === 9 ? 0 : slot + 1} is empty`);
       return;
     }
+    if (object.type === 'ticket') {
+      setMessage('Keep the flight ticket in your inventory');
+      return;
+    }
     const distances = [1.25, 1, .75, 1.5, 1.75, 2, 2.25, 2.5];
     const matchingPicture = OBJECT_METADATA[object.type]?.pictureSubject;
     for (const distance of distances) {
@@ -145,6 +177,15 @@ export function attachPlayerControls(player, canvas, world) {
     const portal = world.magicDoors.find(door => door.building === playerBuilding && Math.hypot(player.x - door.x, player.y - door.y) < .62);
     if (!portal) return;
     const destination = portal.target;
+    if (portal.requiredItem && !player.inventory.some(object => object?.type === portal.requiredItem)) {
+      const awayX = player.x - portal.x;
+      const awayY = player.y - portal.y;
+      const away = Math.hypot(awayX, awayY) || 1;
+      player.x = portal.x + awayX / away * .7;
+      player.y = portal.y + awayY / away * .7;
+      setMessage(`A flight ticket is required · buy one in Building E Room 10 for ${world.ticketSeller.price} credits`);
+      return;
+    }
     let tollMessage = '';
     if (portal.toll && !portal.toll.paid) {
       const { amount } = portal.toll;
@@ -184,6 +225,7 @@ export function attachPlayerControls(player, canvas, world) {
     }
     if (!event.repeat && (key === 'e' || event.code === 'KeyE')) {
       event.preventDefault();
+      if (purchaseTicket()) return;
       if (boardRocket()) return;
       pickUpObject();
       return;
@@ -216,12 +258,13 @@ export function attachPlayerControls(player, canvas, world) {
       if (player.gameComplete) return;
       if (player.launching) {
         player.launching.elapsed += dt;
-        if (player.launching.elapsed >= 8.2) player.gameComplete = true;
+        if (player.launching.elapsed >= 12.75) player.gameComplete = true;
         return;
       }
       player.actionMessageTimer = Math.max(0, (player.actionMessageTimer ?? 0) - dt);
       player.teleportFlash = Math.max(0, (player.teleportFlash ?? 0) - dt);
       player.rocketNearby = Boolean(world.rocket && Math.hypot(player.x - world.rocket.entranceX, player.y - world.rocket.entranceY) < ROCKET_INTERACTION_RANGE);
+      player.ticketSellerNearby = Boolean(world.ticketSeller && Math.hypot(player.x - world.ticketSeller.x, player.y - world.ticketSeller.y) < 2.2);
       const turn = (keysDown.has('arrowright') ? 1 : 0) - (keysDown.has('arrowleft') ? 1 : 0);
       player.a += (turn + touchTurn) * dt * 2.1;
       let forward = (keysDown.has('w') || keysDown.has('arrowup') ? 1 : 0) - (keysDown.has('s') || keysDown.has('arrowdown') ? 1 : 0) + touchMove.y;
@@ -252,6 +295,16 @@ export function attachPlayerControls(player, canvas, world) {
       if (walkTarget && Math.hypot(player.x - beforeX, player.y - beforeY) < speed * .25) walkTarget = null;
       teleportAtMagicDoor();
       updateRobber(world.robber, world, player, dt, () => {
+        const ticketSlot = player.inventory.findIndex(object => object?.type === 'ticket');
+        if (ticketSlot >= 0) {
+          player.inventory[ticketSlot] = null;
+          player.selectedInventorySlot = player.inventory.findIndex(Boolean);
+          if (player.selectedInventorySlot < 0) player.selectedInventorySlot = 0;
+          player.inventoryFlashId += 1;
+          player.gameComplete = true;
+          player.gameOutcome = 'ticket-stolen';
+          return false;
+        }
         const stolenCount = stealInventoryObjects(world, player);
         if (!stolenCount) {
           player.gameComplete = true;

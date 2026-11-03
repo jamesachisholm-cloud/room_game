@@ -1,13 +1,13 @@
-import { loadPlan, roomIdsIn } from './map-plan.js?v=20261107';
-import { makeCat, makeGuitar, makeSimpleObject, makeWallPicture } from './object-geometry.js?v=20261106';
+import { loadPlan, roomIdsIn } from './map-plan.js?v=20261108';
+import { makeCat, makeGuitar, makeSimpleObject, makeTicketSeller, makeWallPicture } from './object-geometry.js?v=20261108';
 import { SIMPLE_OBJECT_TYPES } from './object-types.js?v=20261039';
 import { SIZE } from './world-constants.js?v=20261038';
 import { randomizeObjectPlacements } from './object-placement.js?v=20261101';
-import { buildWorldMap } from './world-map.js?v=20261107';
+import { buildWorldMap } from './world-map.js?v=20261108';
 import { makeRocket } from './rocket.js?v=20261092';
 
 export { CELL_FT, SIZE } from './world-constants.js?v=20261038';
-export { parsePlan } from './map-plan.js?v=20261107';
+export { parsePlan } from './map-plan.js?v=20261108';
 
 const PAD = 12;
 const ROOM_LENGTHS = 10;
@@ -105,13 +105,14 @@ export async function createWorld() {
   }
   const start = { x: placed.A.x + 3.5, y: placed.A.y + 3.5, a: 0 };
   const rocket = makeRocket(placed.F.x + placed.F.w / 2, placed.F.y + placed.F.h + 18);
+  const ticketSeller = makeTicketSeller(placed.E.x + SIZE / 2, placed.E.y + 3 * SIZE + 2.8);
   const buildingPlans = buildings.map(building => ({
     name: building.name, x: building.x, y: building.y, cols: building.cols, rows: building.rows,
     w: building.w, h: building.h, grid: building.grid, doors: building.doors, exits: building.exits, magicDoors: building.magicDoors, objects: building.objects,
     roomCount: roomCountByBuilding.get(building.name)
   }));
   return {
-    buildings, buildingPlans, map, doors, paths, corridors, boxes, tables, guitars, wireObjects, pictures, cat, pickups, magicDoors, magicDoorIds, width, height, start, rocket,
+    buildings, buildingPlans, map, doors, paths, corridors, boxes, tables, guitars, wireObjects, pictures, cat, pickups, magicDoors, magicDoorIds, width, height, start, rocket, ticketSeller,
     moveObject(object, x, y) {
       const dx = x - object.x;
       const dy = y - object.y;

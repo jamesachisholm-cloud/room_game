@@ -1,4 +1,4 @@
-import { OBJECT_METADATA } from './object-types.js?v=20261039';
+import { OBJECT_METADATA } from './object-types.js?v=20261108';
 
 const COMPASS_LABELS = { 0: 'N', 45: 'NE', 90: 'E', 135: 'SE', 180: 'S', 225: 'SW', 270: 'W', 315: 'NW' };
 const COMPASS_PX_PER_DEGREE = 3;
@@ -73,7 +73,14 @@ export function setupHud(canvas, controls) {
       compassTape.style.transform = `translateX(${compass.clientWidth / 2 - (bearing + 360) * COMPASS_PX_PER_DEGREE}px)`;
       const room = world.getRoomAt(player.x, player.y);
       const actionHint = touchMode ? 'PICK UP / DROP buttons' : 'E pick up · 1–9/0 select · G drop';
-      const actionPrompt = player.rocketNearby && !player.launching
+      const ticketPrice = world.ticketSeller?.price ?? 200;
+      const actionPrompt = player.ticketSellerNearby && !player.launching
+        ? player.inventory.some(object => object?.type === 'ticket')
+          ? 'FLIGHT TICKET IN INVENTORY'
+          : player.credits >= ticketPrice
+            ? touchMode ? `TICKET ${ticketPrice} CREDITS · PICK UP TO PURCHASE` : `TICKET ${ticketPrice} CREDITS · PRESS E TO PURCHASE`
+            : `TICKET ${ticketPrice} CREDITS · YOU HAVE ${player.credits}`
+        : player.rocketNearby && !player.launching
         ? touchMode ? 'PICK UP to board the rocket' : 'E · BOARD THE ROCKET'
         : player.launching ? 'THE ROCKET IS LIFTING OFF…'
           : player.actionMessageTimer > 0
@@ -86,12 +93,14 @@ export function setupHud(canvas, controls) {
       if (player.gameComplete) {
         document.body.classList.add('game-ended');
         ending.classList.add('visible');
-        const robbed = player.gameOutcome === 'robbed';
+        const robbed = player.gameOutcome === 'robbed' || player.gameOutcome === 'ticket-stolen';
         ending.classList.toggle('rocket-ending', !robbed);
         endingKicker.textContent = robbed ? 'CAUGHT BY THE ROBBER' : 'MISSION COMPLETE';
         endingTitle.textContent = robbed ? 'THE ROBBER GOT YOU' : '';
-        endingMessage.innerHTML = robbed
-          ? 'The robber found your pockets empty.<br>Try again and protect your loot.'
+        endingMessage.innerHTML = player.gameOutcome === 'ticket-stolen'
+          ? 'The robber stole your flight ticket.<br>Your escape is over.'
+          : robbed
+            ? 'The robber found your pockets empty.<br>Try again and protect your loot.'
           : 'You made it out of Tzargarrot.<br>The next adventure is yours to choose.';
         restartButton.textContent = robbed ? 'TRY AGAIN' : 'PLAY AGAIN';
       }
@@ -106,7 +115,10 @@ export function setupHud(canvas, controls) {
         robberIndicator.classList.remove('robber-near');
       }
       creditsLabel.textContent = String(player.credits);
-      const escapeReady = Boolean(escapePortal && (escapePortal.toll?.paid || player.credits >= (escapePortal.toll?.amount ?? 0)));
+      const ownsTicket = player.inventory.some(object => object?.type === 'ticket');
+      const escapeReady = Boolean(escapePortal && (escapePortal.requiredItem
+        ? escapePortal.requiredItem === 'ticket' && ownsTicket
+        : escapePortal.toll?.paid || player.credits >= (escapePortal.toll?.amount ?? 0)));
       creditsIndicator.classList.toggle('credits-ready', escapeReady);
       if (player.creditFlashId !== lastCreditFlashId) {
         lastCreditFlashId = player.creditFlashId;

@@ -247,7 +247,15 @@ export function createRenderer(canvas, world) {
       }
     }
     previousTime = frameStart;
-    const playerBuilding = world.getRoomAt(player.x, player.y)?.building;
+    const launchView = player.launchView;
+    const originalHorizon = horizon;
+    const cameraHeight = launchView?.height ?? WALL_HEIGHT / 2;
+    if (launchView) {
+      horizon = Math.max(height * .08, originalHorizon - focal * Math.tan(launchView.pitch));
+    }
+    const playerBuilding = launchView && cameraHeight > WALL_HEIGHT
+      ? null
+      : world.getRoomAt(player.x, player.y)?.building;
     const cosA = Math.cos(player.a);
     const sinA = Math.sin(player.a);
     context.fillStyle = skyGradient;
@@ -474,14 +482,14 @@ export function createRenderer(canvas, world) {
         const finishes = buildingFinishes[buildingIndex];
         const near = enter * cosDelta;
         const far = tMax * cosDelta;
-        const roofTop = near < .01 ? 0 : Math.max(0, horizon - focal * WALL_HEIGHT / 2 / near);
-        const roofBottom = Math.min(horizon, horizon - focal * WALL_HEIGHT / 2 / far);
+        const roofTop = near < .01 ? 0 : Math.max(0, horizon + focal * (cameraHeight - WALL_HEIGHT) / near);
+        const roofBottom = Math.min(height, horizon + focal * (cameraHeight - WALL_HEIGHT) / far);
         if (roofBottom > roofTop) {
           context.fillStyle = finishes.ceiling;
           context.fillRect(sx, roofTop, step + 1, roofBottom - roofTop);
         }
-        const floorTop = Math.max(horizon, horizon + focal * WALL_HEIGHT / 2 / far);
-        const floorBottom = near < .01 ? height : Math.min(height, horizon + focal * WALL_HEIGHT / 2 / near);
+        const floorTop = Math.max(horizon, horizon + focal * cameraHeight / far);
+        const floorBottom = near < .01 ? height : Math.min(height, horizon + focal * cameraHeight / near);
         if (floorBottom > floorTop) {
           context.fillStyle = finishes.floor;
           context.fillRect(sx, floorTop, step + 1, floorBottom - floorTop);
@@ -494,8 +502,8 @@ export function createRenderer(canvas, world) {
       hitCount++;
       if (!wallHit) continue;
       const wallHeight = Math.min(height * 1.8, focal * WALL_HEIGHT / distance);
-      const top = horizon - wallHeight / 2;
-      const bottom = horizon + wallHeight / 2;
+      const top = horizon + focal * (cameraHeight - WALL_HEIGHT) / distance;
+      const bottom = horizon + focal * cameraHeight / distance;
       const alpha = Math.max(.2, .9 - distance * .0012 - (side ? .16 : 0));
       const level = Math.round(alpha * STROKE_LEVELS);
       const owner = buildingGrid[hitY * mapWidth + hitX];
@@ -558,8 +566,8 @@ export function createRenderer(canvas, world) {
         const lastDepth = aDepth + (bDepth - aDepth) * clipEnd;
         const firstX = width / 2 + focal * (aLateral + (bLateral - aLateral) * clipStart) / firstDepth;
         const lastX = width / 2 + focal * (aLateral + (bLateral - aLateral) * clipEnd) / lastDepth;
-        const firstY = horizon + focal * (WALL_HEIGHT / 2 - (startZ + (endZ - startZ) * clipStart)) / firstDepth;
-        const lastY = horizon + focal * (WALL_HEIGHT / 2 - (startZ + (endZ - startZ) * clipEnd)) / lastDepth;
+        const firstY = horizon + focal * (cameraHeight - (startZ + (endZ - startZ) * clipStart)) / firstDepth;
+        const lastY = horizon + focal * (cameraHeight - (startZ + (endZ - startZ) * clipEnd)) / lastDepth;
         // Sampling every few pixels lets walls cut the line close to where they begin.
         const count = Math.min(400, Math.max(subdivisions, Math.ceil(Math.hypot(lastX - firstX, lastY - firstY) / sampleSpacing)));
         let active = false;
@@ -567,7 +575,7 @@ export function createRenderer(canvas, world) {
           const t = clipStart + (clipEnd - clipStart) * index / count;
           const depth = aDepth + (bDepth - aDepth) * t;
           const screenX = width / 2 + focal * (aLateral + (bLateral - aLateral) * t) / depth;
-          const screenY = horizon + focal * (WALL_HEIGHT / 2 - (startZ + (endZ - startZ) * t)) / depth;
+          const screenY = horizon + focal * (cameraHeight - (startZ + (endZ - startZ) * t)) / depth;
           const hit = hitPool[Math.min(hitCount - 1, Math.max(0, Math.floor(screenX / step)))];
           if (!ignoreWalls && hit && hit.wallHit && depth > hit.distance + .5) {
             active = false;
@@ -644,9 +652,10 @@ export function createRenderer(canvas, world) {
     if (world.cat && !world.cat.held && isNear(world.cat)) drawWireObject(world.cat, false, objectStyle(world.cat));
     for (const guitar of world.guitars) if (!guitar.held && isNear(guitar)) drawWireObject(guitar, false, objectStyle(guitar));
     for (const object of world.wireObjects) if (!object.held && isNear(object)) drawWireObject(object, false, objectStyle(object));
+    if (world.ticketSeller && isNear(world.ticketSeller)) drawWireObject(world.ticketSeller, false, objectLineStyle);
     if (world.rocket && isNear(world.rocket)) {
       const launchSeconds = player.launching?.elapsed ?? 0;
-      const lift = player.launching ? Math.min(18, launchSeconds * launchSeconds * 2.4) : 0;
+      const lift = launchView ? Math.max(0, cameraHeight - WALL_HEIGHT / 2) : player.launching ? Math.min(18, launchSeconds * launchSeconds * 2.4) : 0;
       const rocketStyle = player.launching
         ? { color: 'rgba(255,211,126,.95)', width: 1.8 }
         : { color: 'rgba(255,201,124,.9)', width: 1.7 };
@@ -745,12 +754,29 @@ export function createRenderer(canvas, world) {
       framePhases.lineMs = performance.now() - phaseStartedAt;
       reportFrameProfile(framePhases, performance.now() - frameStart, step);
     }
+    horizon = originalHorizon;
   }
 
-  function drawLaunch(player, world, elapsed) {
+  function drawLaunch(player, elapsed) {
     const clock = elapsed;
-    const flightTime = Math.max(0, clock - 1.45);
+    const worldDepartureDuration = 6;
+    const planetStart = worldDepartureDuration;
+    const flightTime = Math.max(0, clock - planetStart);
     const progress = Math.max(0, Math.min(1, flightTime / 6.75));
+
+    if (clock < planetStart) {
+      const rise = Math.max(0, Math.min(1, clock / worldDepartureDuration)) ** 2;
+      draw({
+        ...player,
+        x: player.launching.cameraX,
+        y: player.launching.cameraY,
+        a: player.launching.cameraAngle,
+        launchView: { height: WALL_HEIGHT / 2 + 19.5 * rise, pitch: .1 + .12 * rise }
+      });
+      drawViewport();
+      return;
+    }
+
     context.clearRect(0, 0, width, height);
 
     const sky = context.createLinearGradient(0, 0, 0, height);
@@ -838,6 +864,11 @@ export function createRenderer(canvas, world) {
       }
     }
 
+    drawViewport();
+  }
+
+  function drawViewport() {
+    const minSide = Math.min(width, height);
     // A brass-edged viewport makes the shot read as a view back from the rocket.
     context.strokeStyle = 'rgba(188,209,221,.48)';
     context.lineWidth = Math.max(2, minSide * .008);

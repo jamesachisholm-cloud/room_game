@@ -92,6 +92,7 @@ export function buildWorldMap(plan, buildings, padding) {
       openDoorCell(cell.x, cell.y, doorId);
       const portal = {
         id: doorId, pairId: definition.pairId, building: building.name, roomId: definition.roomId, tollAmount: definition.toll ?? 0,
+        requiredItem: definition.requiredItem,
         side: definition.side, bay: definition.bay, offset: definition.offset,
         x: cell.x + .5, y: cell.y + .5
       };
