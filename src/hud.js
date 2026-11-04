@@ -119,7 +119,6 @@ export function setupHud(canvas, controls) {
         robberIndicator.classList.remove('robber-near');
       }
       creditsLabel.textContent = String(player.credits);
-      const ownsTicket = player.inventory.some(object => object?.type === 'ticket');
       const escapeReady = Boolean(escapePortal && (escapePortal.requiredItem
         ? escapePortal.requiredItem === 'ticket' && ownsTicket
         : escapePortal.toll?.paid || player.credits >= (escapePortal.toll?.amount ?? 0)));
