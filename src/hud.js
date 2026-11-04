@@ -74,12 +74,14 @@ export function setupHud(canvas, controls) {
       const room = world.getRoomAt(player.x, player.y);
       const actionHint = touchMode ? 'PICK UP / DROP buttons' : 'E pick up · 1–9/0 select · G drop';
       const ticketPrice = world.ticketSeller?.price ?? 200;
+      const ownsTicket = player.inventory.some(object => object?.type === 'ticket');
+      const ticketSellerPrompt = ownsTicket
+        ? 'FLIGHT TICKET IN INVENTORY'
+        : player.credits >= ticketPrice
+          ? touchMode ? 'TAP PICK UP TO BUY TICKET' : 'PRESS E TO BUY TICKET'
+          : `TICKET COSTS ${ticketPrice} CREDITS · YOU HAVE ${player.credits}`;
       const actionPrompt = player.ticketSellerNearby && !player.launching
-        ? player.inventory.some(object => object?.type === 'ticket')
-          ? 'FLIGHT TICKET IN INVENTORY'
-          : player.credits >= ticketPrice
-            ? touchMode ? `TICKET ${ticketPrice} CREDITS · PICK UP TO PURCHASE` : `TICKET ${ticketPrice} CREDITS · PRESS E TO PURCHASE`
-            : `TICKET ${ticketPrice} CREDITS · YOU HAVE ${player.credits}`
+        ? ticketSellerPrompt
         : player.rocketNearby && !player.launching
         ? touchMode ? 'PICK UP to board the rocket' : 'E · BOARD THE ROCKET'
         : player.launching ? 'THE ROCKET IS LIFTING OFF…'
@@ -87,9 +89,11 @@ export function setupHud(canvas, controls) {
         ? `${player.actionMessage} · ${actionHint}`
         : touchMode ? 'Tap to walk · arrow buttons to turn · PICK UP / DROP' : 'Arrow keys turn · E pick up · 1–9/0 select · G drop';
       if (player.launching) document.body.classList.add('rocket-flight');
-      boardingPrompt.classList.toggle('visible', player.rocketNearby && !player.launching);
+      boardingPrompt.classList.toggle('visible', (player.rocketNearby || player.ticketSellerNearby) && !player.launching);
       boardingKey.hidden = touchMode;
-      boardingLabel.textContent = touchMode ? 'TAP PICK UP TO BOARD' : 'PRESS E TO BOARD';
+      boardingLabel.textContent = player.ticketSellerNearby && !player.launching
+        ? ticketSellerPrompt
+        : touchMode ? 'TAP PICK UP TO BOARD' : 'PRESS E TO BOARD';
       if (player.gameComplete) {
         document.body.classList.add('game-ended');
         ending.classList.add('visible');

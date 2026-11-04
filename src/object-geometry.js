@@ -83,8 +83,9 @@ export function makeCat(x, y, scale) {
   return cat;
 }
 
-export function makeTicketSeller(x, y) {
-  const point = (dx, dy, z) => ({ x: x + dx, y: y + dy, z });
+export function makeTicketSeller(x, y, scale = 1, facing = 'south') {
+  const localY = value => value * scale * (facing === 'north' ? -1 : 1);
+  const point = (dx, dy, z) => ({ x: x + dx * scale, y: y + localY(dy), z: z * scale });
   const lines = [];
   const addLine = (...points) => lines.push(points.map(([dx, dy, z]) => point(dx, dy, z)));
   const head = Array.from({ length: 10 }, (_, index) => {
@@ -101,10 +102,10 @@ export function makeTicketSeller(x, y) {
   return {
     type: 'ticketSeller', x, y, price: 200, held: false, lines,
     cuboids: [
-      { x, y: y + .56, w: 2.55, d: .72, z: .82, h: .14 },
-      { x, y: y + .91, w: 2.35, d: .12, z: .08, h: .74 },
-      { x: x - 1.05, y: y + .56, w: .12, d: .64, z: 0, h: .82 },
-      { x: x + 1.05, y: y + .56, w: .12, d: .64, z: 0, h: .82 }
+      { x, y: y + localY(.56), w: 2.55 * scale, d: .72 * scale, z: .82 * scale, h: .14 * scale },
+      { x, y: y + localY(.91), w: 2.35 * scale, d: .12 * scale, z: .08 * scale, h: .74 * scale },
+      { x: x - 1.05 * scale, y: y + localY(.56), w: .12 * scale, d: .64 * scale, z: 0, h: .82 * scale },
+      { x: x + 1.05 * scale, y: y + localY(.56), w: .12 * scale, d: .64 * scale, z: 0, h: .82 * scale }
     ]
   };
 }
