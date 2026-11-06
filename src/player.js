@@ -1,7 +1,7 @@
 import { CELL_FT } from './world.js?v=20261108';
 import { OBJECT_METADATA } from './object-types.js?v=20261108';
 import { hasClearFootprint } from './placement.js?v=20261038';
-import { createRobber, stealInventoryObjects, updateRobber } from './robber.js?v=20261095';
+import { createRobber, stashTicket, stealInventoryObjects, updateRobber } from './robber.js?v=20261109';
 
 export function createPlayer(start) {
   return { ...start, credits: 0, creditFlashId: 0, inventoryFlashId: 0, inventory: Array(10).fill(null), selectedInventorySlot: 0 };
@@ -297,13 +297,14 @@ export function attachPlayerControls(player, canvas, world) {
       updateRobber(world.robber, world, player, dt, () => {
         const ticketSlot = player.inventory.findIndex(object => object?.type === 'ticket');
         if (ticketSlot >= 0) {
+          const ticket = player.inventory[ticketSlot];
+          if (!stashTicket(world, ticket)) return false;
           player.inventory[ticketSlot] = null;
           player.selectedInventorySlot = player.inventory.findIndex(Boolean);
           if (player.selectedInventorySlot < 0) player.selectedInventorySlot = 0;
           player.inventoryFlashId += 1;
-          player.gameComplete = true;
-          player.gameOutcome = 'ticket-stolen';
-          return false;
+          setMessage('The robber stole your flight ticket and hid it somewhere in Buildings A–D');
+          return true;
         }
         const stolenCount = stealInventoryObjects(world, player);
         if (!stolenCount) {

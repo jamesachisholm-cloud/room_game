@@ -93,26 +93,7 @@ function initialPosition(world) {
   return { x: building.x + 1.5, y: building.y + 1.5 };
 }
 
-function furthestRoomPosition(world, player) {
-  const building = world.buildings.find(candidate => candidate.name === 'E');
-  let best = initialPosition(world);
-  let bestDistance = -1;
-  for (let row = 0; row < building.rows; row++) {
-    for (let col = 0; col < building.cols; col++) {
-      const x = building.x + col * SIZE + SIZE / 2;
-      const y = building.y + row * SIZE + SIZE / 2;
-      if (world.isWall(Math.floor(x), Math.floor(y))) continue;
-      const distance = (player.x - x) ** 2 + (player.y - y) ** 2;
-      if (distance > bestDistance) {
-        best = { x, y };
-        bestDistance = distance;
-      }
-    }
-  }
-  return best;
-}
-
-function getEmptyStashRooms(world) {
+function getStashRooms(world, { emptyOnly = true } = {}) {
   const buildings = world.buildings.filter(candidate => ['A', 'B', 'C', 'D'].includes(candidate.name));
   const occupied = new Set();
   for (const object of world.pickups) {
@@ -126,13 +107,44 @@ function getEmptyStashRooms(world) {
       for (let col = 0; col < building.cols; col++) {
         const roomId = Number(building.grid[row][col]);
         const key = `${building.name}:${roomId}`;
-        if (occupied.has(key)) continue;
+        if (emptyOnly && occupied.has(key)) continue;
         if (!rooms.has(key)) rooms.set(key, { key, building, roomId, bays: [] });
         rooms.get(key).bays.push({ col, row });
       }
     }
   }
   return [...rooms.values()];
+}
+
+export function stashTicket(world, ticket) {
+  const rooms = getStashRooms(world, { emptyOnly: false });
+  // Select a room first so the ticket is guaranteed to land in a random room,
+  // rather than having larger rooms dominate the placement lottery.
+  const shuffledRooms = rooms.slice();
+  for (let i = shuffledRooms.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffledRooms[i], shuffledRooms[j]] = [shuffledRooms[j], shuffledRooms[i]];
+  }
+  for (const room of shuffledRooms) {
+    const positions = [];
+    for (const { col, row } of room.bays) {
+      for (let y = 1; y < SIZE - 1; y++) {
+        for (let x = 1; x < SIZE - 1; x++) {
+          const worldX = room.building.x + col * SIZE + x + .5;
+          const worldY = room.building.y + row * SIZE + y + .5;
+          if (!hasClearFootprint(world, ticket, worldX, worldY)) continue;
+          if (world.pickups.some(other => other !== ticket && !other.held && Math.hypot(other.x - worldX, other.y - worldY) < .9)) continue;
+          positions.push({ x: worldX, y: worldY });
+        }
+      }
+    }
+    if (!positions.length) continue;
+    const destination = positions[Math.floor(Math.random() * positions.length)];
+    world.moveObject(ticket, destination.x, destination.y);
+    ticket.held = false;
+    return true;
+  }
+  return false;
 }
 
 function placeStolenObject(world, object, emptyRooms, roomsUsedThisCatch) {
@@ -207,7 +219,7 @@ export function updateRobber(robber, world, player, dt, onCatch) {
     const stole = onCatch();
     robber.catchCooldown = stole ? 6 : 2;
     if (stole) {
-      Object.assign(robber, furthestRoomPosition(world, player));
+      Object.assign(robber, initialPosition(world));
       robber.path = [];
       robber.pathIndex = 0;
       robber.replanIn = 0;
@@ -219,7 +231,7 @@ export function stealInventoryObjects(world, player) {
   const occupied = player.inventory.flatMap((object, slot) => object ? [{ object, slot }] : []);
   if (!occupied.length) return 0;
   let stolenCount = 0;
-  const emptyRooms = getEmptyStashRooms(world);
+  const emptyRooms = getStashRooms(world);
   const roomsUsedThisCatch = new Set();
   for (const { object, slot } of occupied) {
     if (!placeStolenObject(world, object, emptyRooms, roomsUsedThisCatch)) continue;
