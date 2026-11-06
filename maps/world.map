@@ -81,11 +81,11 @@ end
 building C 6 4
 rooms
 01 01 02 02 02 09
-01 01 10 02 02 03
-04 01 01 05 05 06
+01 01 11 02 02 03
+04 10 10 05 05 06
 04 07 07 08 08 08
 doors
-door 01 05 3
+door 10 05 3
 door 01 02 3
 door 05 02 3
 door 05 06 3
@@ -95,6 +95,7 @@ door 08 07 3
 door 07 04 3
 door 02 09 3
 door 01 10 3
+door 01 11 3
 exits
 exit north 01 3
 exit west 04 20
