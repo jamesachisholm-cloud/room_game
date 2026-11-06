@@ -9,7 +9,7 @@ const STROKE_LEVELS = 32;
 const WALL_HEIGHT = 1;
 const DOOR_HEIGHT = WALL_HEIGHT;
 const FOV = Math.PI / 3;
-const BUILDING_HUES = { A: 13, B: 212, C: 124, D: 246, E: 84, F: 302 };
+const BUILDING_HUES = { A: 13, B: 195, C: 345, D: 246, E: 84, F: 302 };
 const PROFILE_RENDERER = new URLSearchParams(location.search).get('perf') === '1';
 // Map north is -y, so angles are measured from +x (east) towards +y (south).
 // Craters are [x, y, radius] in units of the moon's radius.
