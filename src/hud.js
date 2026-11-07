@@ -119,10 +119,7 @@ export function setupHud(canvas, controls) {
         robberIndicator.classList.remove('robber-near');
       }
       creditsLabel.textContent = String(player.credits);
-      const escapeReady = Boolean(escapePortal && (escapePortal.requiredItem
-        ? escapePortal.requiredItem === 'ticket' && ownsTicket
-        : escapePortal.toll?.paid || player.credits >= (escapePortal.toll?.amount ?? 0)));
-      creditsIndicator.classList.toggle('credits-ready', escapeReady);
+      creditsIndicator.classList.toggle('credits-ready', player.credits >= ticketPrice);
       if (player.creditFlashId !== lastCreditFlashId) {
         lastCreditFlashId = player.creditFlashId;
         creditsIndicator.classList.remove('credits-flashes');

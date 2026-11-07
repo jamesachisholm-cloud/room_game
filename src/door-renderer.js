@@ -20,7 +20,8 @@ const ESCAPE_DOOR_GLYPHS = {
   r: [[[0, 0], [0, 3], [2, 3], [2, 2]]],
   d: [[[2, 0], [2, 3], [0, 3], [0, 0], [2, 0]]],
   i: [[[1, 0], [1, 3]], [[.5, 4], [1.5, 4]]],
-  t: [[[1, 0], [1, 4]], [[0, 3], [2, 3]]]
+  t: [[[1, 0], [1, 4]], [[0, 3], [2, 3]]],
+  u: [[[0, 3], [0, .6], [.3, 0], [1.7, 0], [2, .6], [2, 3]]]
 };
 
 // Draws a portal's destination label using the renderer's shared line projection.
@@ -58,7 +59,7 @@ export function drawDoorGlyph(portal, player, drawProjectedPolyline) {
         }
       }
     };
-    drawText('Flight\n\n\n200\n\nCredits');
+    drawText('Departure');
     return;
   }
 
