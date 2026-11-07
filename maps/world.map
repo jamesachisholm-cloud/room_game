@@ -151,20 +151,21 @@ end
 building E 4 4
 rooms
 01 01 01 01
-07 04 04 02
-06 04 03 02
-05 04 03 02
+08 04 04 02
+07 05 03 02
+06 05 03 02
 doors
 door 01 02 3
-door 02 03 5
+door 02 03 11
 door 03 04 3
 door 04 05 3
 door 05 06 3
 door 06 07 3
+door 07 08 3
 exits
 exit north 01 3
 magicdoors
-magicdoor west 07 E-F ticket
+magicdoor west 08 E-F ticket
 objects
 picture departure-board 1 3 south 3.5 0.2 1.7 0.6
 end
