@@ -26,6 +26,7 @@ canvas { display:block; width:100%; height:100%; }
 body.rocket-flight #hud, body.rocket-flight #crosshair, body.rocket-flight #compass, body.rocket-flight #help, body.rocket-flight #inventory, body.rocket-flight #map-link, body.rocket-flight #boarding-prompt { opacity:0; pointer-events:none; transition:opacity .6s ease; }
 body.game-ended #hud, body.game-ended #crosshair, body.game-ended #compass, body.game-ended #help, body.game-ended #inventory, body.game-ended #map-link, body.game-ended #boarding-prompt { display:none; }
 #intro section { max-width:530px; max-height:100dvh; overflow-y:auto; padding:30px; border:1px solid #72ffd066; background:#091614; box-shadow:0 0 70px #72ffd012; }
+.tribute { margin:-4px 0 18px; color:#8fa9a1; font-size:12px; letter-spacing:.14em; }
 h1 { margin:0 0 10px; font-weight:500; letter-spacing:.24em; color:var(--glow); font-size:clamp(26px,5vw,42px) }
 p { color:#aac6bf; margin:8px 0 20px }
 button { cursor:pointer; color:#07100f; background:var(--glow); border:0; padding:12px 22px; font:inherit; font-weight:bold; letter-spacing:.1em; }
