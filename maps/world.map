@@ -7,12 +7,12 @@
 # Coffee table format: table <bay-col> <bay-row> <x> <y> <width> <depth> <height>.
 # Connection format: <building> <side> <building> <side> [corridor [no-path]]. Adding corridor encloses the route with walls and a ceiling; no-path hides its decorative floor stripe.
 
-building A 5 4
+building A 6 4
 rooms
-01 06 02 03 04
-05 06 06 07 07
-08 08 09 10 10
-08 08 11 11 11
+01 06 02 03 04 14
+05 06 09 07 07 12
+08 08 09 10 10 13
+08 08 11 11 11 11
 doors
 door 01 05 3
 door 02 03 3
@@ -20,14 +20,16 @@ door 02 06 3
 door 05 08 3
 door 04 07 3
 door 06 09 3
-door 07 10 9
-door 08 09 2
+door 07 10 2
 door 09 10 3
-door 10 11 3
+door 11 13 3
 door 08 11 3
+door 10 13 3
+door 07 12 3
+door 12 14 3
 exits
-exit east 07
-exit south 11
+exit east 12
+exit south 11 31
 magicdoors
 magicdoor north 04 A-B
 magicdoor north 03 A-D
@@ -192,5 +194,6 @@ D north A south corridor no-path
 # Add axis-aligned segment <x1> <y1> <x2> <y2> lines to create routed paths with bends.
 paths
 path E north 60.5
-segment 60.5 60.5 85.5 60.5
-segment 60.5 60.5 60.5 130.5
+segment 61.5 60.5 85.5 60.5
+segment 61.5 60.5 61.5 130.5
+segment 60.5 130.5 61.5 130.5

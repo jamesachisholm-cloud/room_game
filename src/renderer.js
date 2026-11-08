@@ -771,7 +771,7 @@ export function createRenderer(canvas, world) {
         x: player.launching.cameraX,
         y: player.launching.cameraY,
         a: player.launching.cameraAngle,
-        launchView: { height: WALL_HEIGHT / 2 + 19.5 * rise, pitch: .1 + .12 * rise }
+        launchView: { height: WALL_HEIGHT / 2 + 19.5 * rise, pitch: .18 + .4 * rise }
       });
       drawViewport();
       return;
