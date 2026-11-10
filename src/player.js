@@ -183,7 +183,7 @@ export function attachPlayerControls(player, canvas, world) {
       const away = Math.hypot(awayX, awayY) || 1;
       player.x = portal.x + awayX / away * .7;
       player.y = portal.y + awayY / away * .7;
-      setMessage(`A flight ticket is required · buy one in Building E Room 10 for ${world.ticketSeller.price} credits`);
+      setMessage(`A flight ticket is required · Price is ${world.ticketSeller.price} credits`);
       return;
     }
     let tollMessage = '';
