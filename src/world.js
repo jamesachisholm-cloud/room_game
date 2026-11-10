@@ -5,6 +5,7 @@ import { SIZE } from './world-constants.js?v=20261038';
 import { randomizeObjectPlacements } from './object-placement.js?v=20261101';
 import { buildWorldMap } from './world-map.js?v=20261108';
 import { makeRocket } from './rocket.js?v=20261092';
+import { makeAirportFixtures } from './airport-fixtures.js';
 
 export { CELL_FT, SIZE } from './world-constants.js?v=20261038';
 export { parsePlan } from './map-plan.js?v=20261108';
@@ -47,6 +48,7 @@ export async function createWorld() {
   const roomCountByBuilding = new Map(buildings.map(building => [building.name, roomIdsIn(building.grid).length]));
   const worldMap = buildWorldMap(plan, buildings, PAD);
   const { width, height, map, doors, paths, corridors, magicDoors, magicDoorIds } = worldMap;
+  const fixtures = makeAirportFixtures(placed.E);
   randomizeObjectPlacements(buildings, (x, y) => x < 0 || y < 0 || x >= width || y >= height || map[y][x] === 1);
 
   const boxes = [];
@@ -118,7 +120,7 @@ export async function createWorld() {
     roomCount: roomCountByBuilding.get(building.name)
   }));
   return {
-    buildings, buildingPlans, map, doors, paths, corridors, boxes, tables, guitars, wireObjects, pictures, cat, pickups, magicDoors, magicDoorIds, width, height, start, rocket, ticketSeller,
+    buildings, buildingPlans, map, doors, paths, corridors, boxes, tables, guitars, wireObjects, fixtures, pictures, cat, pickups, magicDoors, magicDoorIds, width, height, start, rocket, ticketSeller,
     moveObject(object, x, y) {
       const dx = x - object.x;
       const dy = y - object.y;

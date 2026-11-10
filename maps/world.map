@@ -195,6 +195,6 @@ D north A south corridor no-path
 # Add axis-aligned segment <x1> <y1> <x2> <y2> lines to create routed paths with bends.
 paths
 path E north 60.5
-segment 61.5 60.5 85.5 60.5
-segment 61.5 60.5 61.5 130.5
-segment 60.5 130.5 61.5 130.5
+segment 85.5 60.5 115.5 60.5
+segment 115.5 60.5 115.5 130.5
+segment 61.5 130.5 115.5 130.5

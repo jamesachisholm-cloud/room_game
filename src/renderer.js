@@ -652,6 +652,7 @@ export function createRenderer(canvas, world) {
     if (world.cat && !world.cat.held && isNear(world.cat)) drawWireObject(world.cat, false, objectStyle(world.cat));
     for (const guitar of world.guitars) if (!guitar.held && isNear(guitar)) drawWireObject(guitar, false, objectStyle(guitar));
     for (const object of world.wireObjects) if (!object.held && isNear(object)) drawWireObject(object, false, objectStyle(object));
+    for (const fixture of world.fixtures ?? []) if (isNear(fixture)) drawWireObject(fixture);
     if (world.ticketSeller && isNear(world.ticketSeller)) drawWireObject(world.ticketSeller, false, objectLineStyle);
     if (world.rocket && isNear(world.rocket)) {
       const launchSeconds = player.launching?.elapsed ?? 0;
