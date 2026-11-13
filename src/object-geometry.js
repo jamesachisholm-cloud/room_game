@@ -1,4 +1,4 @@
-import { SIZE } from './world-constants.js?v=20261038';
+import { SIZE, WALL_HEIGHT } from './world-constants.js?v=20261116';
 
 const DEPARTURE_GLYPHS = {
   A: ['010', '101', '111', '101', '101'], D: ['110', '101', '101', '101', '110'],
@@ -275,12 +275,15 @@ export function makeWallPicture(building, object) {
     throw new Error(`Picture in Building ${building.name} has an invalid wall side.`);
   }
   const point = (u, v) => alongX
-    ? { x: x + (object.side === 'south' && object.subject === 'departure-board' ? -u : u), y, z: object.z + v }
-    : { x, y: y + u, z: object.z + v };
+    ? { x: x + (object.side === 'south' && object.subject === 'departure-board' ? -u : u), y, z: pictureBaseZ + v }
+    : { x, y: y + u, z: pictureBaseZ + v };
   const lines = [];
   const addLine = (...points) => lines.push(points.map(([u, v]) => point(u, v)));
   const halfW = object.w / 2;
   const h = object.h;
+  // Center regular pictures on the wall; oversized departure boards keep
+  // their authored height because they cannot fit within the wall height.
+  const pictureBaseZ = h <= WALL_HEIGHT ? (WALL_HEIGHT - h) / 2 - .15 : object.z;
   addLine([-halfW, 0], [halfW, 0], [halfW, h], [-halfW, h], [-halfW, 0]);
   if (object.subject === 'departure-board') {
     addDepartureBoard(addLine, halfW, h);
