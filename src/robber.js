@@ -4,6 +4,29 @@ import { hasClearFootprint } from './placement.js?v=20261038';
 const ROBBER_SPEED = 1.08;
 const REPLAN_SECONDS = 1.2;
 const CATCH_DISTANCE = .72;
+const NEIGHBORS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+let pathWorkspace = null;
+
+function getPathWorkspace(width, height) {
+  const size = width * height;
+  if (!pathWorkspace || pathWorkspace.width !== width || pathWorkspace.height !== height) {
+    pathWorkspace = {
+      width, height,
+      scores: new Float32Array(size), parents: new Int32Array(size),
+      seen: new Uint32Array(size), closed: new Uint32Array(size), generation: 0,
+      heap: []
+    };
+  }
+  const workspace = pathWorkspace;
+  workspace.generation = (workspace.generation + 1) >>> 0;
+  if (!workspace.generation) {
+    workspace.seen.fill(0);
+    workspace.closed.fill(0);
+    workspace.generation = 1;
+  }
+  workspace.heap.length = 0;
+  return workspace;
+}
 
 function findPath(world, startX, startY, goalX, goalY) {
   const { width, height, map } = world;
@@ -11,12 +34,8 @@ function findPath(world, startX, startY, goalX, goalY) {
   const goal = Math.floor(goalY) * width + Math.floor(goalX);
   if (start === goal) return [];
 
-  const scores = new Float32Array(width * height);
-  scores.fill(Infinity);
-  const parents = new Int32Array(width * height);
-  parents.fill(-1);
-  const closed = new Uint8Array(width * height);
-  const heap = [];
+  const workspace = getPathWorkspace(width, height);
+  const { scores, parents, seen, closed, heap, generation } = workspace;
   const heuristic = index => Math.abs(index % width - goalX) + Math.abs(Math.floor(index / width) - goalY);
   const push = (index, score) => {
     const node = { index, score };
@@ -50,10 +69,11 @@ function findPath(world, startX, startY, goalX, goalY) {
   };
 
   scores[start] = 0;
+  seen[start] = generation;
   push(start, heuristic(start));
   while (heap.length) {
     const current = pop().index;
-    if (closed[current]) continue;
+    if (closed[current] === generation) continue;
     if (current === goal) {
       const path = [];
       for (let index = goal; index !== start; index = parents[index]) {
@@ -62,18 +82,19 @@ function findPath(world, startX, startY, goalX, goalY) {
       path.reverse();
       return path;
     }
-    closed[current] = 1;
+    closed[current] = generation;
     const x = current % width;
     const y = Math.floor(current / width);
-    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+    for (const [dx, dy] of NEIGHBORS) {
       const nx = x + dx;
       const ny = y + dy;
-      if (nx < 0 || ny < 0 || nx >= width || ny >= height || map[ny][nx] === 1) continue;
+      if (nx < 0 || ny < 0 || nx >= width || ny >= height || map[ny][nx] === 1 || !world.canMove(x + .5, y + .5, nx + .5, ny + .5)) continue;
       const next = ny * width + nx;
-      if (closed[next]) continue;
+      if (closed[next] === generation) continue;
       const score = scores[current] + 1;
-      if (score >= scores[next]) continue;
+      if (seen[next] === generation && score >= scores[next]) continue;
       scores[next] = score;
+      seen[next] = generation;
       parents[next] = current;
       push(next, score + heuristic(next));
     }
@@ -210,8 +231,8 @@ export function updateRobber(robber, world, player, dt, onCatch) {
   if (distance > 0) {
     const nextX = robber.x + dx / distance * step;
     const nextY = robber.y + dy / distance * step;
-    if (!world.isWall(Math.floor(nextX), Math.floor(robber.y))) robber.x = nextX;
-    if (!world.isWall(Math.floor(robber.x), Math.floor(nextY))) robber.y = nextY;
+    if (!world.isWall(Math.floor(nextX), Math.floor(robber.y)) && world.canMove(robber.x, robber.y, nextX, robber.y, .14)) robber.x = nextX;
+    if (!world.isWall(Math.floor(robber.x), Math.floor(nextY)) && world.canMove(robber.x, robber.y, robber.x, nextY, .14)) robber.y = nextY;
   }
   if (target && distance < .14) robber.pathIndex++;
 

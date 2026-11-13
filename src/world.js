@@ -1,9 +1,9 @@
 import { loadPlan, roomIdsIn } from './map-plan.js?v=20261108';
-import { makeCat, makeGuitar, makeSimpleObject, makeTicketSeller, makeWallPicture } from './object-geometry.js?v=20261108';
+import { makeCat, makeGuitar, makeSimpleObject, makeTicketSeller, makeWallPicture } from './object-geometry.js?v=20261113';
 import { SIMPLE_OBJECT_TYPES } from './object-types.js?v=20261039';
 import { SIZE } from './world-constants.js?v=20261038';
 import { randomizeObjectPlacements } from './object-placement.js?v=20261101';
-import { buildWorldMap } from './world-map.js?v=20261108';
+import { buildWorldMap } from './world-map.js?v=20261114';
 import { makeRocket } from './rocket.js?v=20261092';
 import { makeAirportFixtures } from './airport-fixtures.js';
 
@@ -47,7 +47,13 @@ export async function createWorld() {
   const buildings = [placed.A, placed.B, placed.C, placed.D, placed.E, placed.F];
   const roomCountByBuilding = new Map(buildings.map(building => [building.name, roomIdsIn(building.grid).length]));
   const worldMap = buildWorldMap(plan, buildings, PAD);
-  const { width, height, map, doors, paths, corridors, magicDoors, magicDoorIds } = worldMap;
+  const { width, height, map, doors, paths, corridors, magicDoors, magicDoorIds, interiorWallEdges, interiorDoorEdges, interiorDoorIds } = worldMap;
+  const verticalWallEdges = new Uint8Array((width + 1) * height);
+  const horizontalWallEdges = new Uint8Array(width * (height + 1));
+  for (const edge of interiorWallEdges) {
+    if (edge.orientation === 'vertical') verticalWallEdges[edge.along * (width + 1) + edge.line] = 1;
+    else horizontalWallEdges[edge.line * width + edge.along] = 1;
+  }
   const fixtures = makeAirportFixtures(placed.E);
   randomizeObjectPlacements(buildings, (x, y) => x < 0 || y < 0 || x >= width || y >= height || map[y][x] === 1);
 
@@ -120,7 +126,7 @@ export async function createWorld() {
     roomCount: roomCountByBuilding.get(building.name)
   }));
   return {
-    buildings, buildingPlans, map, doors, paths, corridors, boxes, tables, guitars, wireObjects, fixtures, pictures, cat, pickups, magicDoors, magicDoorIds, width, height, start, rocket, ticketSeller,
+    buildings, buildingPlans, map, doors, paths, corridors, boxes, tables, guitars, wireObjects, fixtures, pictures, cat, pickups, magicDoors, magicDoorIds, interiorWallEdges, interiorDoorEdges, interiorDoorIds, width, height, start, rocket, ticketSeller,
     moveObject(object, x, y) {
       const dx = x - object.x;
       const dy = y - object.y;
@@ -148,6 +154,29 @@ export async function createWorld() {
       }
     },
     isWall(x, y) { return x < 0 || y < 0 || x >= width || y >= height ? true : map[y][x] === 1; },
+    canMove(fromX, fromY, toX, toY, radius = 0) {
+      if (this.isWall(Math.floor(toX), Math.floor(toY))) return false;
+      const check = (edges, stride, from, to, otherFrom, otherTo, maxLine, maxAlong, vertical) => {
+        const delta = to - from;
+        if (!delta) return false;
+        const direction = Math.sign(delta);
+        for (let edgeLine = Math.floor(Math.min(from, to)) - 1; edgeLine <= Math.ceil(Math.max(from, to)) + 1; edgeLine++) {
+          if (edgeLine < 0 || edgeLine > maxLine) continue;
+          const line = edgeLine - direction * radius;
+          if (direction > 0 ? !(from < edgeLine && to >= line) : !(from > edgeLine && to <= line)) continue;
+          const fraction = (line - from) / delta;
+          const along = otherFrom + (otherTo - otherFrom) * fraction;
+          for (let edgeAlong = Math.floor(along - radius); edgeAlong <= Math.floor(along + radius); edgeAlong++) {
+            if (edgeAlong < 0 || edgeAlong >= maxAlong) continue;
+            const index = vertical ? edgeAlong * stride + edgeLine : edgeLine * stride + edgeAlong;
+            if (index >= 0 && index < edges.length && edges[index]) return true;
+          }
+        }
+        return false;
+      };
+      return !check(verticalWallEdges, width + 1, fromX, toX, fromY, toY, width, height, true)
+        && !check(horizontalWallEdges, width, fromY, toY, fromX, toX, height, width, false);
+    },
     getRoomAt(x, y) {
       const building = buildings.find(candidate => x >= candidate.x && x < candidate.x + candidate.w && y >= candidate.y && y < candidate.y + candidate.h);
       if (!building) return null;

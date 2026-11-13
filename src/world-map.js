@@ -6,6 +6,9 @@ export function buildWorldMap(plan, buildings, padding) {
   const height = Math.max(...buildings.map(building => building.y + building.h)) + padding;
   const map = Array.from({ length: height }, () => Array(width).fill(0));
   const doors = new Map();
+  const interiorWallEdges = [];
+  const interiorDoorEdges = [];
+  const interiorDoorIds = new Set();
   let nextDoorId = 0;
   const key = (x, y) => `${x},${y}`;
   const openDoorCell = (x, y, doorId = nextDoorId++) => {
@@ -80,6 +83,80 @@ export function buildWorldMap(plan, buildings, padding) {
     for (const exit of building.exits) {
       const cell = exitCell(building, exit);
       openDoorCell(cell.x, cell.y);
+    }
+  }
+
+  // Interior partitions live on the shared boundary between adjacent floor
+  // cells. Clear their old two-cell raster footprint and retain the wall as a
+  // zero-thickness edge for rendering and collision.
+  for (const building of buildings) {
+    const addPartition = (orientation, line, start, end) => {
+      const vertical = orientation === 'vertical';
+      // A line can contain multiple disjoint partition segments. Only the
+      // segment containing the door opening may claim its ID; otherwise a
+      // nearby collinear wall can be misclassified as part of this doorway.
+      const door = building.doors.find(candidate => candidate.orientation === orientation
+        && candidate.line === line
+        && candidate.start + candidate.offset < end
+        && candidate.start + candidate.offset + candidate.width > start);
+      let doorId = null;
+      let doorStart = -1;
+      let doorEnd = -1;
+      if (door) {
+        doorId = doors.get(vertical
+          ? `${building.x + line - 1},${building.y + door.start + door.offset}`
+          : `${building.x + door.start + door.offset},${building.y + line - 1}`) ?? null;
+        doorStart = (vertical ? building.y : building.x) + door.start + door.offset;
+        doorEnd = doorStart + door.width;
+        if (doorId !== null) interiorDoorIds.add(doorId);
+      }
+      const globalLine = (vertical ? building.x : building.y) + line;
+      for (let along = start; along < end; along++) {
+        const globalAlong = (vertical ? building.y : building.x) + along;
+        const perimeterStart = vertical ? building.y : building.x;
+        const perimeterEnd = perimeterStart + (vertical ? building.h : building.w) - 1;
+        if (globalAlong > perimeterStart && globalAlong < perimeterEnd) {
+          if (vertical) {
+            map[globalAlong][globalLine - 1] = 0;
+            map[globalAlong][globalLine] = 0;
+          } else {
+            map[globalLine - 1][globalAlong] = 0;
+            map[globalLine][globalAlong] = 0;
+          }
+        }
+        if (globalAlong > perimeterStart && globalAlong < perimeterEnd && doorId !== null && globalAlong >= doorStart && globalAlong < doorEnd) {
+          interiorDoorEdges.push({ orientation, line: globalLine, along: globalAlong, id: doorId });
+        } else if (globalAlong > perimeterStart && globalAlong < perimeterEnd) {
+          interiorWallEdges.push({ orientation, line: globalLine, along: globalAlong });
+        }
+      }
+      // Clear the rasterized corner cell at the end of each segment. The
+      // zero-thickness edge ends at this grid line, so leaving that cell solid
+      // creates a one-cell stub that reads as a wall protrusion.
+      const endpoint = (vertical ? building.y : building.x) + end;
+      const perimeterStart = vertical ? building.y : building.x;
+      const perimeterEnd = perimeterStart + (vertical ? building.h : building.w) - 1;
+      if (endpoint > perimeterStart && endpoint < perimeterEnd) {
+        if (vertical) {
+          map[endpoint][globalLine - 1] = 0;
+          map[endpoint][globalLine] = 0;
+        } else {
+          map[globalLine - 1][endpoint] = 0;
+          map[globalLine][endpoint] = 0;
+        }
+      }
+    };
+    for (let row = 0; row < building.rows; row++) {
+      for (let col = 0; col + 1 < building.cols; col++) {
+        if (building.grid[row][col] === building.grid[row][col + 1]) continue;
+        addPartition('vertical', (col + 1) * SIZE, row * SIZE, (row + 1) * SIZE);
+      }
+    }
+    for (let row = 0; row + 1 < building.rows; row++) {
+      for (let col = 0; col < building.cols; col++) {
+        if (building.grid[row][col] === building.grid[row + 1][col]) continue;
+        addPartition('horizontal', (row + 1) * SIZE, col * SIZE, (col + 1) * SIZE);
+      }
     }
   }
 
@@ -197,5 +274,5 @@ export function buildWorldMap(plan, buildings, padding) {
       else map[cross][wall] = 0;
     }
   }
-  return { width, height, map, doors, paths, corridors, magicDoors, magicDoorIds };
+  return { width, height, map, doors, paths, corridors, magicDoors, magicDoorIds, interiorWallEdges, interiorDoorEdges, interiorDoorIds };
 }

@@ -152,12 +152,25 @@ export function createRenderer(canvas, world) {
   const wallGrid = new Uint8Array(mapWidth * mapHeight);
   const doorGrid = new Int32Array(mapWidth * mapHeight).fill(-1);
   const buildingGrid = new Uint8Array(mapWidth * mapHeight);
+  const verticalWallEdges = new Uint8Array((mapWidth + 1) * mapHeight);
+  const horizontalWallEdges = new Uint8Array(mapWidth * (mapHeight + 1));
+  const verticalDoorEdges = new Int32Array((mapWidth + 1) * mapHeight).fill(-1);
+  const horizontalDoorEdges = new Int32Array(mapWidth * (mapHeight + 1)).fill(-1);
   for (let y = 0; y < mapHeight; y++) {
     for (let x = 0; x < mapWidth; x++) wallGrid[y * mapWidth + x] = world.map[y][x] === 1 ? 1 : 0;
   }
   for (const [cell, doorId] of world.doors) {
+    if (world.interiorDoorIds?.has(doorId)) continue;
     const [x, y] = cell.split(',').map(Number);
     doorGrid[y * mapWidth + x] = doorId;
+  }
+  for (const edge of world.interiorWallEdges ?? []) {
+    if (edge.orientation === 'vertical') verticalWallEdges[edge.along * (mapWidth + 1) + edge.line] = 1;
+    else horizontalWallEdges[edge.line * mapWidth + edge.along] = 1;
+  }
+  for (const edge of world.interiorDoorEdges ?? []) {
+    if (edge.orientation === 'vertical') verticalDoorEdges[edge.along * (mapWidth + 1) + edge.line] = edge.id;
+    else horizontalDoorEdges[edge.line * mapWidth + edge.along] = edge.id;
   }
   roofedAreas.forEach((area, index) => {
     for (let y = area.y; y < area.y + area.h; y++) {
@@ -412,6 +425,28 @@ export function createRenderer(canvas, world) {
           side = 1;
         }
         if (mapX < 0 || mapY < 0 || mapX >= mapWidth || mapY >= mapHeight) break;
+        const edgeLine = side === 0 ? (stepX > 0 ? mapX : mapX + 1) : (stepY > 0 ? mapY : mapY + 1);
+        const edgeIndex = side === 0 ? mapY * (mapWidth + 1) + edgeLine : edgeLine * mapWidth + mapX;
+        const edgeDoorId = side === 0 ? verticalDoorEdges[edgeIndex] : horizontalDoorEdges[edgeIndex];
+        const edgeWall = side === 0 ? verticalWallEdges[edgeIndex] : horizontalWallEdges[edgeIndex];
+        if (edgeDoorId >= 0) {
+          rayDoors.push({ id: edgeDoorId, distance });
+          // At close range, treat the opening as passable so the lintel does
+          // not expand down across the view as the player crosses the plane.
+          if (distance > 1.15) {
+            hitX = mapX;
+            hitY = mapY;
+            wallHit = true;
+            doorPanel = true;
+            break;
+          }
+        }
+        if (edgeWall) {
+          hitX = mapX;
+          hitY = mapY;
+          wallHit = true;
+          break;
+        }
         const cell = mapY * mapWidth + mapX;
         const doorId = doorGrid[cell];
         if (doorId >= 0) {
@@ -698,6 +733,11 @@ export function createRenderer(canvas, world) {
     }
     for (const picture of world.pictures) {
       if (!isNear(picture)) continue;
+      const frontSide = picture.side === 'north' ? player.y > picture.y
+        : picture.side === 'south' ? player.y < picture.y
+        : picture.side === 'west' ? player.x > picture.x
+        : player.x < picture.x;
+      if (!frontSide) continue;
       const lineStyle = objectStyle(picture);
       context.strokeStyle = lineStyle.color;
       context.lineWidth = lineStyle.width;

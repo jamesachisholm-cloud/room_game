@@ -257,17 +257,19 @@ export function makeWallPicture(building, object) {
   let x;
   let y;
   const alongX = object.side === 'north' || object.side === 'south';
+  const room = building.grid[object.row][object.col];
+  const hasPartition = (col, row) => building.grid[row]?.[col] !== undefined && building.grid[row][col] !== room;
   if (object.side === 'north') {
     x = building.x + object.col * SIZE + object.offset;
-    y = building.y + object.row * SIZE + 1 + .035;
+    y = building.y + object.row * SIZE + (object.row > 0 && hasPartition(object.col, object.row - 1) ? .035 : 1 + .035);
   } else if (object.side === 'south') {
     x = building.x + object.col * SIZE + object.offset;
-    y = building.y + (object.row + 1) * SIZE - 1 - .035;
+    y = building.y + (object.row + 1) * SIZE - (object.row + 1 < building.rows && hasPartition(object.col, object.row + 1) ? .035 : 1 + .035);
   } else if (object.side === 'west') {
-    x = building.x + object.col * SIZE + 1 + .035;
+    x = building.x + object.col * SIZE + (object.col > 0 && hasPartition(object.col - 1, object.row) ? .035 : 1 + .035);
     y = building.y + object.row * SIZE + object.offset;
   } else if (object.side === 'east') {
-    x = building.x + (object.col + 1) * SIZE - 1 - .035;
+    x = building.x + (object.col + 1) * SIZE - (object.col + 1 < building.cols && hasPartition(object.col + 1, object.row) ? .035 : 1 + .035);
     y = building.y + object.row * SIZE + object.offset;
   } else {
     throw new Error(`Picture in Building ${building.name} has an invalid wall side.`);

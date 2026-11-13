@@ -1,7 +1,7 @@
-import { CELL_FT } from './world.js?v=20261108';
+import { CELL_FT } from './world.js?v=20261114';
 import { OBJECT_METADATA } from './object-types.js?v=20261108';
 import { hasClearFootprint } from './placement.js?v=20261038';
-import { createRobber, stashTicket, stealInventoryObjects, updateRobber } from './robber.js?v=20261109';
+import { createRobber, stashTicket, stealInventoryObjects, updateRobber } from './robber.js?v=20261114';
 
 export function createPlayer(start) {
   return { ...start, credits: 0, creditFlashId: 0, inventoryFlashId: 0, inventory: Array(10).fill(null), selectedInventorySlot: 0 };
@@ -77,7 +77,9 @@ export function attachPlayerControls(player, canvas, world) {
     const steps = Math.ceil(distance / .1);
     for (let step = 1; step < steps; step++) {
       const amount = step / steps;
-      if (world.isWall(Math.floor(player.x + dx * amount), Math.floor(player.y + dy * amount))) return false;
+      const x = player.x + dx * amount;
+      const y = player.y + dy * amount;
+      if (world.isWall(Math.floor(x), Math.floor(y)) || !world.canMove(player.x + dx * (step - 1) / steps, player.y + dy * (step - 1) / steps, x, y)) return false;
     }
     return true;
   }
@@ -290,8 +292,8 @@ export function attachPlayerControls(player, canvas, world) {
       const radius = .19;
       const beforeX = player.x;
       const beforeY = player.y;
-      if (!world.isWall(Math.floor(player.x + dx + Math.sign(dx) * radius), Math.floor(player.y))) player.x += dx;
-      if (!world.isWall(Math.floor(player.x), Math.floor(player.y + dy + Math.sign(dy) * radius))) player.y += dy;
+      if (!world.isWall(Math.floor(player.x + dx + Math.sign(dx) * radius), Math.floor(player.y)) && world.canMove(player.x, player.y, player.x + dx, player.y, radius)) player.x += dx;
+      if (!world.isWall(Math.floor(player.x), Math.floor(player.y + dy + Math.sign(dy) * radius)) && world.canMove(player.x, player.y, player.x, player.y + dy, radius)) player.y += dy;
       if (walkTarget && Math.hypot(player.x - beforeX, player.y - beforeY) < speed * .25) walkTarget = null;
       teleportAtMagicDoor();
       updateRobber(world.robber, world, player, dt, () => {
@@ -327,7 +329,12 @@ export function attachPlayerControls(player, canvas, world) {
       const dirY = Math.sin(bearing) * direction;
       const distance = Math.abs(offsetY) * TAP_WALK_CELLS_PER_WIDTH;
       let reach = 0;
-      while (reach < distance && !world.isWall(Math.floor(player.x + dirX * (reach + .05)), Math.floor(player.y + dirY * (reach + .05)))) reach += .05;
+      while (reach < distance) {
+        const nextX = player.x + dirX * (reach + .05);
+        const nextY = player.y + dirY * (reach + .05);
+        if (world.isWall(Math.floor(nextX), Math.floor(nextY)) || !world.canMove(player.x + dirX * reach, player.y + dirY * reach, nextX, nextY, .19)) break;
+        reach += .05;
+      }
       reach = Math.min(reach, distance);
       if (reach < distance) reach -= .3;
       walkTarget = reach > .15 ? { x: player.x + dirX * reach, y: player.y + dirY * reach } : null;
