@@ -83,6 +83,9 @@ export function createRenderer(canvas, world) {
   // Corridors get a floor and ceiling just like buildings do.
   const roofedAreas = [...buildings, ...world.corridors];
   const hitPool = [];
+  const visibleDoors = new Map();
+  const rayDoorIds = [];
+  const rayDoorDistances = [];
   let pathLines = null;
   let outlineLines = null;
   let profileWindowStartedAt = performance.now();
@@ -388,8 +391,7 @@ export function createRenderer(canvas, world) {
         ? { color: 'rgba(147,235,255,.9)', width: 2 }
         : { color: 'rgba(114,255,208,.72)', width: 1.5 };
     };
-    const visibleDoors = new Map();
-    const rayDoors = [];
+    visibleDoors.clear();
     for (let sx = 0; sx < width; sx += step) {
       const screenOffset = (sx - width / 2) / focal;
       const cosDelta = 1 / Math.sqrt(1 + screenOffset * screenOffset);
@@ -410,7 +412,8 @@ export function createRenderer(canvas, world) {
       let wallHit = false;
       let doorPanel = false;
       let magicDoorPanel = false;
-      rayDoors.length = 0;
+      rayDoorIds.length = 0;
+      rayDoorDistances.length = 0;
 
       for (let i = 0; i < maxRaySteps; i++) {
         if (sideX < sideY) {
@@ -430,7 +433,8 @@ export function createRenderer(canvas, world) {
         const edgeDoorId = side === 0 ? verticalDoorEdges[edgeIndex] : horizontalDoorEdges[edgeIndex];
         const edgeWall = side === 0 ? verticalWallEdges[edgeIndex] : horizontalWallEdges[edgeIndex];
         if (edgeDoorId >= 0) {
-          rayDoors.push({ id: edgeDoorId, distance });
+          rayDoorIds.push(edgeDoorId);
+          rayDoorDistances.push(distance);
           // At close range, treat the opening as passable so the lintel does
           // not expand down across the view as the player crosses the plane.
           if (distance > 1.15) {
@@ -457,7 +461,8 @@ export function createRenderer(canvas, world) {
             wallHit = true;
             break;
           }
-          rayDoors.push({ id: doorId, distance });
+          rayDoorIds.push(doorId);
+          rayDoorDistances.push(distance);
           if (distance > 1.15) {
             hitX = mapX;
             hitY = mapY;
@@ -476,11 +481,12 @@ export function createRenderer(canvas, world) {
       }
 
       distance = Math.max(.08, distance * cosDelta);
-      for (const door of rayDoors) {
-        const doorDepth = door.distance * cosDelta;
-        let visible = visibleDoors.get(door.id);
+      for (let doorIndex = 0; doorIndex < rayDoorIds.length; doorIndex++) {
+        const doorId = rayDoorIds[doorIndex];
+        const doorDepth = rayDoorDistances[doorIndex] * cosDelta;
+        let visible = visibleDoors.get(doorId);
         if (!visible) {
-          visibleDoors.set(door.id, visible = { id: door.id, left: sx, right: sx + step, leftDepth: doorDepth, rightDepth: doorDepth, magic: world.magicDoorIds.has(door.id) });
+          visibleDoors.set(doorId, visible = { id: doorId, left: sx, right: sx + step, leftDepth: doorDepth, rightDepth: doorDepth, magic: world.magicDoorIds.has(doorId) });
         } else {
           if (sx < visible.left) {
             visible.left = sx;

@@ -30,6 +30,14 @@ export function setupHud(canvas, controls) {
   const robberIndicator = document.querySelector('#robber-card');
   let lastCreditFlashId = 0;
   let lastInventoryFlashId = 0;
+  const lastText = new WeakMap();
+  const setText = (element, value) => {
+    if (lastText.get(element) !== value) {
+      element.textContent = value;
+      lastText.set(element, value);
+    }
+  };
+  let endingShown = false;
   const help = document.querySelector('#help');
   const boardingPrompt = document.querySelector('#boarding-prompt');
   const boardingKey = document.querySelector('#boarding-key');
@@ -70,7 +78,8 @@ export function setupHud(canvas, controls) {
       escapePortal ??= world.magicDoors.find(door => door.building === 'E' && door.target?.building === 'F');
       // Map north is -y and player.a is measured from east, so north is a = -90°.
       const bearing = (((player.a * 180 / Math.PI + 90) % 360) + 360) % 360;
-      compassTape.style.transform = `translateX(${compass.clientWidth / 2 - (bearing + 360) * COMPASS_PX_PER_DEGREE}px)`;
+      const compassTransform = `translateX(${compass.clientWidth / 2 - (bearing + 360) * COMPASS_PX_PER_DEGREE}px)`;
+      if (compassTape.style.transform !== compassTransform) compassTape.style.transform = compassTransform;
       const room = world.getRoomAt(player.x, player.y);
       const actionHint = touchMode ? 'PICK UP / DROP buttons' : 'E pick up · 1–9/0 select · G drop';
       const ticketPrice = world.ticketSeller?.price ?? 200;
@@ -91,34 +100,38 @@ export function setupHud(canvas, controls) {
       if (player.launching) document.body.classList.add('rocket-flight');
       boardingPrompt.classList.toggle('visible', (player.rocketNearby || player.ticketSellerNearby) && !player.launching);
       boardingKey.hidden = touchMode;
-      boardingLabel.textContent = player.ticketSellerNearby && !player.launching
+      setText(boardingLabel, player.ticketSellerNearby && !player.launching
         ? ticketSellerPrompt
-        : touchMode ? 'TAP PICK UP TO BOARD' : 'PRESS E TO BOARD';
+        : touchMode ? 'TAP PICK UP TO BOARD' : 'PRESS E TO BOARD');
       if (player.gameComplete) {
         document.body.classList.add('game-ended');
-        ending.classList.add('visible');
-        const robbed = player.gameOutcome === 'robbed' || player.gameOutcome === 'ticket-stolen';
-        ending.classList.toggle('rocket-ending', !robbed);
-        endingKicker.textContent = robbed ? 'CAUGHT BY THE ROBBER' : 'MISSION COMPLETE';
-        endingTitle.textContent = robbed ? 'THE ROBBER GOT YOU' : '';
-        endingMessage.innerHTML = player.gameOutcome === 'ticket-stolen'
-          ? 'The robber stole your flight ticket.<br>Your escape is over.'
-          : robbed
-            ? 'The robber found your pockets empty.<br>Try again and protect your loot.'
-          : 'You made it out of Tzargarrot.<br>The next adventure is yours to choose.';
-        restartButton.textContent = robbed ? 'TRY AGAIN' : 'PLAY AGAIN';
+        if (!endingShown) {
+          endingShown = true;
+          ending.classList.add('visible');
+          const robbed = player.gameOutcome === 'robbed' || player.gameOutcome === 'ticket-stolen';
+          ending.classList.toggle('rocket-ending', !robbed);
+          setText(endingKicker, robbed ? 'CAUGHT BY THE ROBBER' : 'MISSION COMPLETE');
+          setText(endingTitle, robbed ? 'THE ROBBER GOT YOU' : '');
+          endingMessage.innerHTML = player.gameOutcome === 'ticket-stolen'
+            ? 'The robber stole your flight ticket.<br>Your escape is over.'
+            : robbed
+              ? 'The robber found your pockets empty.<br>Try again and protect your loot.'
+            : 'You made it out of Tzargarrot.<br>The next adventure is yours to choose.';
+          setText(restartButton, robbed ? 'TRY AGAIN' : 'PLAY AGAIN');
+        }
       }
-      const carriedCount = player.inventory.filter(Boolean).length;
+      let carriedCount = 0;
+      for (const object of player.inventory) if (object) carriedCount++;
       const robber = world.robber;
       if (robber) {
         const distanceMeters = Math.hypot(player.x - robber.x, player.y - robber.y) * (10 / 7) * 0.3048;
-        robberDistanceLabel.textContent = `${Math.round(distanceMeters)} m`;
+        setText(robberDistanceLabel, `${Math.round(distanceMeters)} m`);
         robberIndicator.classList.toggle('robber-near', distanceMeters < 5);
       } else {
-        robberDistanceLabel.textContent = '—';
+        setText(robberDistanceLabel, '—');
         robberIndicator.classList.remove('robber-near');
       }
-      creditsLabel.textContent = String(player.credits);
+      setText(creditsLabel, String(player.credits));
       creditsIndicator.classList.toggle('credits-ready', player.credits >= ticketPrice);
       if (player.creditFlashId !== lastCreditFlashId) {
         lastCreditFlashId = player.creditFlashId;
@@ -132,21 +145,21 @@ export function setupHud(canvas, controls) {
         void inventorySlots.offsetWidth;
         inventorySlots.classList.add('inventory-flashes');
       }
-      inventoryCount.textContent = `${carriedCount} / 10`;
+      setText(inventoryCount, `${carriedCount} / 10`);
       slotElements.forEach(({ slot, item }, index) => {
         const object = player.inventory[index];
         slot.classList.toggle('selected', index === player.selectedInventorySlot);
         slot.classList.toggle('occupied', Boolean(object));
-        item.textContent = object ? (OBJECT_METADATA[object.type]?.inventoryName ?? object.type) : '—';
+        setText(item, object ? (OBJECT_METADATA[object.type]?.inventoryName ?? object.type) : '—');
       });
       if (room) {
-        buildingLabel.textContent = room.building;
-        help.textContent = actionPrompt;
+        setText(buildingLabel, room.building);
+        setText(help, actionPrompt);
       } else {
-        buildingLabel.textContent = '—';
-        help.textContent = player.actionMessageTimer > 0
+        setText(buildingLabel, '—');
+        setText(help, player.actionMessageTimer > 0
           ? actionPrompt
-          : `OUTSIDE · follow paths · ${actionHint}`;
+          : `OUTSIDE · follow paths · ${actionHint}`);
       }
     }
   };

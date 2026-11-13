@@ -91,11 +91,20 @@ export function attachPlayerControls(player, canvas, world) {
       setMessage('Inventory full · 10 of 10 objects');
       return;
     }
-    const object = world.pickups
-      .filter(candidate => !candidate.held)
-      .map(candidate => ({ candidate, distance: Math.hypot(candidate.x - player.x, candidate.y - player.y) }))
-      .filter(item => item.distance <= 1.6 && hasLineOfSight(item.candidate))
-      .sort((a, b) => a.distance - b.distance)[0]?.candidate;
+    let object = null;
+    let nearestDistance = 1.6;
+    for (const candidate of world.pickups) {
+      if (candidate.held) continue;
+      const dx = candidate.x - player.x;
+      const dy = candidate.y - player.y;
+      const distanceSquared = dx * dx + dy * dy;
+      if (distanceSquared > nearestDistance * nearestDistance) continue;
+      const distance = Math.sqrt(distanceSquared);
+      if (hasLineOfSight(candidate)) {
+        object = candidate;
+        nearestDistance = distance;
+      }
+    }
     if (!object) {
       setMessage('No object close enough to pick up');
       return;
