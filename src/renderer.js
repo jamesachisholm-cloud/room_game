@@ -542,7 +542,8 @@ export function createRenderer(canvas, world) {
       const bottom = horizon + focal * cameraHeight / distance;
       const alpha = Math.max(.2, .9 - distance * .0012 - (side ? .16 : 0));
       const level = Math.round(alpha * STROKE_LEVELS);
-      const owner = buildingGrid[hitY * mapWidth + hitX];
+      const playerCell = Math.floor(player.y) * mapWidth + Math.floor(player.x);
+      const owner = doorPanel ? buildingGrid[playerCell] : buildingGrid[hitY * mapWidth + hitX];
       // Whole device pixels, so fractional scaling never leaves a see-through seam between columns.
       const left = Math.floor(sx * pixelRatio) / pixelRatio;
       const right = Math.ceil((sx + step + 1) * pixelRatio) / pixelRatio;
