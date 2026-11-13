@@ -6,8 +6,9 @@ const COARSE_POINTER = matchMedia('(pointer: coarse)').matches;
 const NEAR_DEPTH = .26;
 const OBJECT_RANGE = 50;
 const STROKE_LEVELS = 32;
-const WALL_HEIGHT = 1;
-const DOOR_HEIGHT = WALL_HEIGHT;
+const WALL_HEIGHT = 1.44;
+const DOOR_HEIGHT = 1;
+const EYE_HEIGHT = .5;
 const FOV = Math.PI / 3;
 const BUILDING_HUES = { A: 13, B: 195, C: 345, D: 246, E: 28, F: 302 };
 const PROFILE_RENDERER = new URLSearchParams(location.search).get('perf') === '1';
@@ -249,7 +250,7 @@ export function createRenderer(canvas, world) {
     previousTime = frameStart;
     const launchView = player.launchView;
     const originalHorizon = horizon;
-    const cameraHeight = launchView?.height ?? WALL_HEIGHT / 2;
+    const cameraHeight = launchView?.height ?? EYE_HEIGHT;
     if (launchView) {
       horizon = Math.max(height * .08, originalHorizon - focal * Math.tan(launchView.pitch));
     }
@@ -507,14 +508,21 @@ export function createRenderer(canvas, world) {
       const alpha = Math.max(.2, .9 - distance * .0012 - (side ? .16 : 0));
       const level = Math.round(alpha * STROKE_LEVELS);
       const owner = buildingGrid[hitY * mapWidth + hitX];
-      const colTop = doorPanel ? bottom - Math.min(wallHeight, focal * DOOR_HEIGHT / distance) : top;
-      context.fillStyle = magicDoorPanel ? magicDoorShades[level] : doorPanel ? doorShades[level] : wallShades[owner][level];
       // Whole device pixels, so fractional scaling never leaves a see-through seam between columns.
       const left = Math.floor(sx * pixelRatio) / pixelRatio;
       const right = Math.ceil((sx + step + 1) * pixelRatio) / pixelRatio;
-      const fillTop = Math.floor(colTop * pixelRatio) / pixelRatio;
+      const fillTop = Math.floor(top * pixelRatio) / pixelRatio;
       const fillBottom = Math.ceil(bottom * pixelRatio) / pixelRatio;
+      // A door cell is still part of the wall above the door opening. Paint the
+      // full wall first, then overlay the shorter door panel below its lintel.
+      context.fillStyle = wallShades[owner][level];
       context.fillRect(left, fillTop, right - left, fillBottom - fillTop);
+      if (doorPanel) {
+        const panelTop = Math.max(top, bottom - Math.min(wallHeight, focal * DOOR_HEIGHT / distance));
+        const fillPanelTop = Math.floor(panelTop * pixelRatio) / pixelRatio;
+        context.fillStyle = magicDoorPanel ? magicDoorShades[level] : doorShades[level];
+        context.fillRect(left, fillPanelTop, right - left, fillBottom - fillPanelTop);
+      }
     }
     if (framePhases) {
       const rayEndedAt = performance.now();
@@ -656,7 +664,7 @@ export function createRenderer(canvas, world) {
     if (world.ticketSeller && isNear(world.ticketSeller)) drawWireObject(world.ticketSeller, false, objectLineStyle);
     if (world.rocket && isNear(world.rocket)) {
       const launchSeconds = player.launching?.elapsed ?? 0;
-      const lift = launchView ? Math.max(0, cameraHeight - WALL_HEIGHT / 2) : player.launching ? Math.min(18, launchSeconds * launchSeconds * 2.4) : 0;
+      const lift = launchView ? Math.max(0, cameraHeight - EYE_HEIGHT) : player.launching ? Math.min(18, launchSeconds * launchSeconds * 2.4) : 0;
       const rocketStyle = player.launching
         ? { color: 'rgba(255,211,126,.95)', width: 1.8 }
         : { color: 'rgba(255,201,124,.9)', width: 1.7 };
@@ -731,8 +739,8 @@ export function createRenderer(canvas, world) {
     }
 
     for (const door of visibleDoors.values()) {
-      const leftBottom = horizon + focal * WALL_HEIGHT / (2 * door.leftDepth);
-      const rightBottom = horizon + focal * WALL_HEIGHT / (2 * door.rightDepth);
+      const leftBottom = horizon + focal * cameraHeight / door.leftDepth;
+      const rightBottom = horizon + focal * cameraHeight / door.rightDepth;
       const leftTop = leftBottom - focal * DOOR_HEIGHT / door.leftDepth;
       const rightTop = rightBottom - focal * DOOR_HEIGHT / door.rightDepth;
       context.strokeStyle = door.magic ? '#e070ff' : 'rgba(114,255,208,.72)';
@@ -772,7 +780,7 @@ export function createRenderer(canvas, world) {
         x: player.launching.cameraX,
         y: player.launching.cameraY,
         a: player.launching.cameraAngle,
-        launchView: { height: WALL_HEIGHT / 2 + 19.5 * rise, pitch: .18 + .4 * rise }
+        launchView: { height: EYE_HEIGHT + 19.5 * rise, pitch: .18 + .4 * rise }
       });
       drawViewport();
       return;
