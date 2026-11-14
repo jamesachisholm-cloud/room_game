@@ -549,8 +549,10 @@ export function createRenderer(canvas, world) {
       const bottom = horizon + focal * cameraHeight / distance;
       const alpha = Math.max(.2, .9 - distance * .0012 - (side ? .16 : 0));
       const level = Math.round(alpha * STROKE_LEVELS);
-      const playerCell = Math.floor(player.y) * mapWidth + Math.floor(player.x);
-      const owner = doorPanel ? buildingGrid[playerCell] : buildingGrid[hitY * mapWidth + hitX];
+      // The lintel belongs to the wall that was hit. Using the player's tile
+      // miscolors it when viewing an exterior door from outside, or an interior
+      // door beyond an exterior entrance while the player is still outside.
+      const owner = buildingGrid[hitY * mapWidth + hitX];
       // Whole device pixels, so fractional scaling never leaves a see-through seam between columns.
       const left = Math.floor(sx * pixelRatio) / pixelRatio;
       const right = Math.ceil((sx + step + 1) * pixelRatio) / pixelRatio;
