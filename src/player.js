@@ -4,6 +4,52 @@ import { hasClearFootprint } from './placement.js?v=20261038';
 import { createRobber, stashTicket, stealInventoryObjects, updateRobber } from './robber.js?v=20261114';
 
 let soundContext;
+let robberDrone;
+
+function updateRobberProximitySound(distanceMeters) {
+  const AudioContextClass = globalThis.AudioContext ?? globalThis.webkitAudioContext;
+  if (!AudioContextClass) return;
+  try {
+    soundContext ??= new AudioContextClass();
+  } catch {
+    return;
+  }
+
+  const start = soundContext.currentTime;
+  const intensity = Math.max(0, Math.min(1, (10 - distanceMeters) / 10));
+  if (!intensity) {
+    if (robberDrone) {
+      robberDrone.gain.gain.setTargetAtTime(.0001, start, .18);
+    }
+    return;
+  }
+  if (soundContext.state === 'suspended') soundContext.resume().catch(() => {});
+  if (!robberDrone) {
+    const low = soundContext.createOscillator();
+    const high = soundContext.createOscillator();
+    const gain = soundContext.createGain();
+    const filter = soundContext.createBiquadFilter();
+    low.type = 'sawtooth';
+    high.type = 'triangle';
+    filter.type = 'lowpass';
+    filter.frequency.value = 420;
+    low.frequency.value = 42;
+    high.frequency.value = 56;
+    gain.gain.value = .0001;
+    low.connect(filter);
+    high.connect(filter);
+    filter.connect(gain);
+    gain.connect(soundContext.destination);
+    low.start();
+    high.start();
+    robberDrone = { low, high, gain, filter };
+  }
+  const { low, high, gain, filter } = robberDrone;
+  low.frequency.setTargetAtTime(38 + intensity * 22, start, .25);
+  high.frequency.setTargetAtTime(53 + intensity * 39, start, .25);
+  filter.frequency.setTargetAtTime(260 + intensity * 1100, start, .3);
+  gain.gain.setTargetAtTime(.004 + intensity * .0225, start, .3);
+}
 
 function playActionSound(kind) {
   const AudioContextClass = globalThis.AudioContext ?? globalThis.webkitAudioContext;
@@ -398,6 +444,8 @@ export function attachPlayerControls(player, canvas, world) {
         setMessage(`The robber stole all ${stolenCount} ${itemWord} and scattered them through Buildings A–D`);
         return stolenCount;
       });
+      const robberDistanceMeters = Math.hypot(player.x - world.robber.x, player.y - world.robber.y) * (10 / 7) * 0.3048;
+      updateRobberProximitySound(robberDistanceMeters);
     },
     walkToScreenPoint(offsetX, offsetY) {
       // Offsets are from the tap split line (a quarter up from the bottom), in canvas widths. Above it walks forward, below walks back, in proportion to the offset.
