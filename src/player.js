@@ -1,7 +1,72 @@
-import { CELL_FT } from './world.js?v=20261114';
+import { CELL_FT } from './world.js?v=20261117';
 import { OBJECT_METADATA } from './object-types.js?v=20261108';
 import { hasClearFootprint } from './placement.js?v=20261038';
 import { createRobber, stashTicket, stealInventoryObjects, updateRobber } from './robber.js?v=20261114';
+
+let soundContext;
+
+function playActionSound(kind) {
+  const AudioContextClass = globalThis.AudioContext ?? globalThis.webkitAudioContext;
+  if (!AudioContextClass) return;
+  try {
+    soundContext ??= new AudioContextClass();
+  } catch {
+    return;
+  }
+  if (soundContext.state === 'suspended') soundContext.resume().catch(() => {});
+
+  const start = soundContext.currentTime;
+  if (kind === 'pickup') {
+    const oscillator = soundContext.createOscillator();
+    const gain = soundContext.createGain();
+    oscillator.type = 'triangle';
+    oscillator.frequency.setValueAtTime(360, start);
+    oscillator.frequency.exponentialRampToValueAtTime(620, start + .11);
+    oscillator.frequency.exponentialRampToValueAtTime(470, start + .19);
+    gain.gain.setValueAtTime(.0001, start);
+    gain.gain.exponentialRampToValueAtTime(.12, start + .015);
+    gain.gain.exponentialRampToValueAtTime(.0001, start + .21);
+    oscillator.connect(gain);
+    gain.connect(soundContext.destination);
+    oscillator.start(start);
+    oscillator.stop(start + .22);
+    return;
+  }
+
+  if (kind === 'robbed') {
+    for (const [frequency, endFrequency] of [[260, 175], [370, 245]]) {
+      const oscillator = soundContext.createOscillator();
+      const gain = soundContext.createGain();
+      oscillator.type = 'sawtooth';
+      oscillator.frequency.setValueAtTime(frequency, start);
+      oscillator.frequency.exponentialRampToValueAtTime(endFrequency, start + .32);
+      gain.gain.setValueAtTime(.0001, start);
+      gain.gain.exponentialRampToValueAtTime(.055, start + .015);
+      gain.gain.setValueAtTime(.045, start + .16);
+      gain.gain.exponentialRampToValueAtTime(.0001, start + .34);
+      oscillator.connect(gain);
+      gain.connect(soundContext.destination);
+      oscillator.start(start);
+      oscillator.stop(start + .35);
+    }
+    return;
+  }
+
+  for (const [index, frequency] of [523.25, 659.25, 783.99, 1046.5].entries()) {
+    const noteStart = start + index * .075;
+    const oscillator = soundContext.createOscillator();
+    const gain = soundContext.createGain();
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(frequency, noteStart);
+    gain.gain.setValueAtTime(.0001, noteStart);
+    gain.gain.exponentialRampToValueAtTime(index === 3 ? .11 : .085, noteStart + .012);
+    gain.gain.exponentialRampToValueAtTime(.0001, noteStart + .34);
+    oscillator.connect(gain);
+    gain.connect(soundContext.destination);
+    oscillator.start(noteStart);
+    oscillator.stop(noteStart + .35);
+  }
+}
 
 export function createPlayer(start) {
   return { ...start, credits: 0, creditFlashId: 0, inventoryFlashId: 0, inventory: Array(10).fill(null), selectedInventorySlot: 0 };
@@ -126,6 +191,7 @@ export function attachPlayerControls(player, canvas, world) {
     object.held = true;
     player.inventory[slot] = object;
     player.selectedInventorySlot = slot;
+    playActionSound('pickup');
     setMessage(pickupMessage);
   }
 
@@ -169,6 +235,7 @@ export function attachPlayerControls(player, canvas, world) {
         player.inventory[slot] = null;
         const nextSlot = player.inventory.findIndex(item => item !== null);
         if (nextSlot >= 0) player.selectedInventorySlot = nextSlot;
+        playActionSound('reward');
         setMessage(`Paired ${objectName(object)} · +${object.value} credits · balance ${player.credits}`);
         return;
       }
@@ -314,6 +381,7 @@ export function attachPlayerControls(player, canvas, world) {
           player.selectedInventorySlot = player.inventory.findIndex(Boolean);
           if (player.selectedInventorySlot < 0) player.selectedInventorySlot = 0;
           player.inventoryFlashId += 1;
+          playActionSound('robbed');
           setMessage('The robber stole your flight ticket and hid it somewhere in Buildings A–D');
           return true;
         }
@@ -321,9 +389,11 @@ export function attachPlayerControls(player, canvas, world) {
         if (!stolenCount) {
           player.gameComplete = true;
           player.gameOutcome = 'robbed';
+          playActionSound('robbed');
           return false;
         }
         player.inventoryFlashId += 1;
+        playActionSound('robbed');
         const itemWord = stolenCount === 1 ? 'item' : 'items';
         setMessage(`The robber stole all ${stolenCount} ${itemWord} and scattered them through Buildings A–D`);
         return stolenCount;

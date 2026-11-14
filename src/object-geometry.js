@@ -1,4 +1,4 @@
-import { SIZE, WALL_HEIGHT } from './world-constants.js?v=20261116';
+import { SIZE, WALL_HEIGHT } from './world-constants.js?v=20261117';
 
 const DEPARTURE_GLYPHS = {
   A: ['010', '101', '111', '101', '101'], D: ['110', '101', '101', '101', '110'],
@@ -283,7 +283,7 @@ export function makeWallPicture(building, object) {
   const h = object.h;
   // Center regular pictures on the wall; oversized departure boards keep
   // their authored height because they cannot fit within the wall height.
-  const pictureBaseZ = h <= WALL_HEIGHT ? (WALL_HEIGHT - h) / 2 - .15 : object.z;
+  const pictureBaseZ = h <= WALL_HEIGHT ? (WALL_HEIGHT - h) / 2 - .25 : object.z;
   addLine([-halfW, 0], [halfW, 0], [halfW, h], [-halfW, h], [-halfW, 0]);
   if (object.subject === 'departure-board') {
     addDepartureBoard(addLine, halfW, h);

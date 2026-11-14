@@ -2,13 +2,14 @@ import { drawDoorGlyph } from './door-renderer.js?v=20261109';
 import { buildPathLines } from './path-geometry.js?v=20261101';
 import { createLaunchRenderer } from './launch-renderer.js?v=20261116';
 import { createProjector } from './projected-lines.js?v=20261116';
-import { WALL_HEIGHT } from './world-constants.js?v=20261116';
+import { WALL_HEIGHT } from './world-constants.js?v=20261117';
 
 // Phones render at a lower resolution and sample fewer rays and line points.
 const COARSE_POINTER = matchMedia('(pointer: coarse)').matches;
 const OBJECT_RANGE = 50;
 const STROKE_LEVELS = 32;
 const DOOR_HEIGHT = 1;
+const DOOR_WIDTH = .8;
 const EYE_HEIGHT = .5;
 const FOV = Math.PI / 3;
 const BUILDING_HUES = { A: 13, B: 195, C: 345, D: 246, E: 28, F: 302 };
@@ -63,6 +64,17 @@ const STARS = (() => {
 export function createRenderer(canvas, world) {
   const context = canvas.getContext('2d');
   const magicDoorById = new Map(world.magicDoors.map(door => [door.id, door]));
+  const doorAlongBounds = new Map();
+  for (const [cell, doorId] of world.doors) {
+    const [x, y] = cell.split(',').map(Number);
+    const bounds = doorAlongBounds.get(doorId);
+    if (bounds) {
+      bounds.minX = Math.min(bounds.minX, x);
+      bounds.maxX = Math.max(bounds.maxX, x);
+      bounds.minY = Math.min(bounds.minY, y);
+      bounds.maxY = Math.max(bounds.maxY, y);
+    } else doorAlongBounds.set(doorId, { minX: x, maxX: x, minY: y, maxY: y });
+  }
   let width = 0;
   let height = 0;
   let pixelRatio = 1;
@@ -413,6 +425,7 @@ export function createRenderer(canvas, world) {
       let wallHit = false;
       let doorPanel = false;
       let magicDoorPanel = false;
+      let narrowDoorPanel = false;
       rayDoorIds.length = 0;
       rayDoorDistances.length = 0;
 
@@ -434,8 +447,16 @@ export function createRenderer(canvas, world) {
         const edgeDoorId = side === 0 ? verticalDoorEdges[edgeIndex] : horizontalDoorEdges[edgeIndex];
         const edgeWall = side === 0 ? verticalWallEdges[edgeIndex] : horizontalWallEdges[edgeIndex];
         if (edgeDoorId >= 0) {
-          rayDoorIds.push(edgeDoorId);
-          rayDoorDistances.push(distance);
+          const bounds = doorAlongBounds.get(edgeDoorId);
+          const along = side === 0 ? player.y + rayY * distance : player.x + rayX * distance;
+          const min = bounds ? (side === 0 ? bounds.minY : bounds.minX) : Math.floor(along);
+          const max = bounds ? (side === 0 ? bounds.maxY : bounds.maxX) : Math.floor(along);
+          const center = (min + max + 1) / 2;
+          narrowDoorPanel = Math.abs(along - center) <= (max - min + 1) * DOOR_WIDTH / 2;
+          if (narrowDoorPanel) {
+            rayDoorIds.push(edgeDoorId);
+            rayDoorDistances.push(distance);
+          }
           // At close range, treat the opening as passable so the lintel does
           // not expand down across the view as the player crosses the plane.
           if (distance > 1.15) {
@@ -462,8 +483,16 @@ export function createRenderer(canvas, world) {
             wallHit = true;
             break;
           }
-          rayDoorIds.push(doorId);
-          rayDoorDistances.push(distance);
+          const bounds = doorAlongBounds.get(doorId);
+          const along = side === 0 ? player.y + rayY * distance : player.x + rayX * distance;
+          const min = bounds ? (side === 0 ? bounds.minY : bounds.minX) : Math.floor(along);
+          const max = bounds ? (side === 0 ? bounds.maxY : bounds.maxX) : Math.floor(along);
+          const center = (min + max + 1) / 2;
+          narrowDoorPanel = Math.abs(along - center) <= (max - min + 1) * DOOR_WIDTH / 2;
+          if (narrowDoorPanel) {
+            rayDoorIds.push(doorId);
+            rayDoorDistances.push(distance);
+          }
           if (distance > 1.15) {
             hitX = mapX;
             hitY = mapY;
@@ -565,8 +594,10 @@ export function createRenderer(canvas, world) {
       if (doorPanel) {
         const panelTop = Math.max(top, bottom - Math.min(wallHeight, focal * DOOR_HEIGHT / distance));
         const fillPanelTop = Math.floor(panelTop * pixelRatio) / pixelRatio;
-        context.fillStyle = magicDoorPanel ? magicDoorShades[level] : doorShades[level];
-        context.fillRect(left, fillPanelTop, right - left, fillBottom - fillPanelTop);
+        if (narrowDoorPanel) {
+          context.fillStyle = magicDoorPanel ? magicDoorShades[level] : doorShades[level];
+          context.fillRect(left, fillPanelTop, right - left, fillBottom - fillPanelTop);
+        }
       }
     }
     if (framePhases) {
