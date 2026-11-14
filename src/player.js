@@ -16,7 +16,7 @@ function updateRobberProximitySound(distanceMeters) {
   }
 
   const start = soundContext.currentTime;
-  const intensity = Math.max(0, Math.min(1, (10 - distanceMeters) / 10));
+  const intensity = Math.max(0, Math.min(1, (5 - distanceMeters) / 5));
   if (!intensity) {
     if (robberDrone) {
       robberDrone.gain.gain.setTargetAtTime(.0001, start, .18);
