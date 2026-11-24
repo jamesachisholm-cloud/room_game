@@ -12,7 +12,7 @@ const DOOR_HEIGHT = 1;
 const DOOR_WIDTH = .8;
 const EYE_HEIGHT = .5;
 const FOV = Math.PI / 3;
-const BUILDING_HUES = { A: 13, B: 195, C: 345, D: 246, E: 28, F: 302 };
+const BUILDING_HUES = { A: 238, B: 316, C: 345, D: 246, E: 28, F: 302 };
 const PROFILE_RENDERER = new URLSearchParams(location.search).get('perf') === '1';
 // Map north is -y, so angles are measured from +x (east) towards +y (south).
 // Craters are [x, y, radius] in units of the moon's radius.
@@ -195,7 +195,9 @@ export function createRenderer(canvas, world) {
   });
   // Style strings are built once; index 0 is the default look for walls outside any building.
   const buildingHues = [168, ...roofedAreas.map(area => BUILDING_HUES[area.name] ?? 168)];
-  const wallShades = buildingHues.map(hue => Array.from({ length: STROKE_LEVELS + 1 }, (_, level) => `hsl(${hue},40%,${8 + level / STROKE_LEVELS * 24}%)`));
+  const buildingSaturations = [40, ...roofedAreas.map(area => ['A', 'B'].includes(area.name) ? 68 : ['C', 'D', 'E'].includes(area.name) ? 52 : 40)];
+  const buildingLightnessOffsets = [0, ...roofedAreas.map(area => area.name === 'A' ? 1.5 : 0)];
+  const wallShades = buildingHues.map((hue, index) => Array.from({ length: STROKE_LEVELS + 1 }, (_, level) => `hsl(${hue},${buildingSaturations[index]}%,${8 + level / STROKE_LEVELS * 24 + buildingLightnessOffsets[index]}%)`));
   const doorShades = Array.from({ length: STROKE_LEVELS + 1 }, (_, level) => `hsl(165,45%,${22 + level / STROKE_LEVELS * 22}%)`);
   const magicDoorShades = Array.from({ length: STROKE_LEVELS + 1 }, (_, level) => `hsl(285,45%,${24 + level / STROKE_LEVELS * 22}%)`);
 
@@ -221,11 +223,13 @@ export function createRenderer(canvas, world) {
     buildingFinishes = roofedAreas.map((area, index) => {
       const hue = buildingHues[index + 1] ?? 168;
       const ceiling = context.createLinearGradient(0, 0, 0, horizon);
-      ceiling.addColorStop(0, `hsl(${hue},30%,20%)`);
-      ceiling.addColorStop(1, `hsl(${hue},30%,13%)`);
+      const saturation = ['A', 'B'].includes(area.name) ? 48 : ['C', 'D', 'E'].includes(area.name) ? 38 : 30;
+      const lightnessOffset = area.name === 'A' ? 1 : 0;
+      ceiling.addColorStop(0, `hsl(${hue},${saturation}%,${20 + lightnessOffset}%)`);
+      ceiling.addColorStop(1, `hsl(${hue},${saturation}%,${13 + lightnessOffset}%)`);
       const floor = context.createLinearGradient(0, horizon, 0, height);
-      floor.addColorStop(0, `hsl(${hue},30%,13%)`);
-      floor.addColorStop(1, `hsl(${hue},30%,20%)`);
+      floor.addColorStop(0, `hsl(${hue},${saturation}%,${13 + lightnessOffset}%)`);
+      floor.addColorStop(1, `hsl(${hue},${saturation}%,${20 + lightnessOffset}%)`);
       return { ceiling, floor };
     });
     moonSprites = [];
