@@ -1,5 +1,5 @@
 import { drawDoorGlyph } from './door-renderer.js?v=2026112602';
-import { buildPathLines } from './path-geometry.js?v=20261101';
+import { buildPathLines } from './path-geometry.js?v=2026112603';
 import { createLaunchRenderer } from './launch-renderer.js?v=20261116';
 import { createProjector } from './projected-lines.js?v=20261116';
 import { WALL_HEIGHT } from './world-constants.js?v=20261117';

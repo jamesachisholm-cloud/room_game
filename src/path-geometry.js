@@ -1,77 +1,77 @@
 const PATH_HALF_WIDTH = .5;
+const JOIN_EPSILON = 1e-9;
 
-// Build the two parallel edges and clean corner joins for the world's paths.
-export function buildPathLines(paths) {
+function addSegment(segmentsByCoordinate, coordinate, start, end) {
+  if (!segmentsByCoordinate.has(coordinate)) segmentsByCoordinate.set(coordinate, []);
+  segmentsByCoordinate.get(coordinate).push([Math.min(start, end), Math.max(start, end)]);
+}
+
+function mergeEdges(segmentsByCoordinate, vertical) {
   const lines = [];
-  const innerCornerTrims = new Map();
-  const cornerJoins = [];
-  const trimKey = (pathIndex, endpoint, offset) => `${pathIndex}:${endpoint}:${offset}`;
+  for (const [coordinate, segments] of segmentsByCoordinate) {
+    segments.sort((a, b) => a[0] - b[0]);
+    let [start, end] = segments[0] ?? [];
+    const addLine = (from, to) => lines.push(vertical
+      ? [{ x: coordinate, y: from, z: 0 }, { x: coordinate, y: to, z: 0 }]
+      : [{ x: from, y: coordinate, z: 0 }, { x: to, y: coordinate, z: 0 }]);
+    for (let index = 1; index < segments.length; index++) {
+      const [nextStart, nextEnd] = segments[index];
+      if (nextStart <= end + JOIN_EPSILON) {
+        end = Math.max(end, nextEnd);
+      } else {
+        addLine(start, end);
+        [start, end] = [nextStart, nextEnd];
+      }
+    }
+    if (start !== undefined) addLine(start, end);
+  }
+  return lines;
+}
 
-  const trimJunctionEnd = (path, endpoint, otherEndpoint) => {
-    const crossing = paths.some(other => {
-      if (other.axis === path.axis) return false;
-      const low = Math.min(other.from, other.to);
-      const high = Math.max(other.from, other.to);
-      return other.fixed === endpoint && path.fixed > low && path.fixed < high;
-    });
-    return crossing ? endpoint + Math.sign(otherEndpoint - endpoint) * PATH_HALF_WIDTH : endpoint;
-  };
+// Draw the outline of the combined path surface. Treating paths as a union of
+// rectangles gives turns and junctions one shared boundary, without overlap
+// stubs from independently extended path edges.
+export function buildPathLines(paths) {
+  const rectangles = [];
+  for (const path of paths) {
+    if (!Number.isFinite(path.from) || !Number.isFinite(path.to) || !Number.isFinite(path.fixed)) continue;
+    const low = Math.min(path.from, path.to);
+    const high = Math.max(path.from, path.to);
+    if (high <= low) continue;
+    rectangles.push(path.axis === 'x'
+      ? { left: low, right: high, top: path.fixed - PATH_HALF_WIDTH, bottom: path.fixed + PATH_HALF_WIDTH }
+      : { left: path.fixed - PATH_HALF_WIDTH, right: path.fixed + PATH_HALF_WIDTH, top: low, bottom: high });
+  }
+  if (!rectangles.length) return [];
 
-  // Find 90-degree shared endpoints before drawing the parallel path edges.
-  for (let first = 0; first < paths.length; first++) {
-    for (let second = first + 1; second < paths.length; second++) {
-      const a = paths[first];
-      const b = paths[second];
-      if (a.axis === b.axis) continue;
-      const horizontalIndex = a.axis === 'x' ? first : second;
-      const verticalIndex = a.axis === 'y' ? first : second;
-      const horizontal = paths[horizontalIndex];
-      const vertical = paths[verticalIndex];
-      for (const x of [horizontal.from, horizontal.to]) {
-        for (const y of [vertical.from, vertical.to]) {
-          if (vertical.fixed !== x || horizontal.fixed !== y) continue;
-          const horizontalInward = Math.sign((x === horizontal.from ? horizontal.to : horizontal.from) - x);
-          const verticalInward = Math.sign((y === vertical.from ? vertical.to : vertical.from) - y);
-          for (const side of [-1, 1]) {
-            const verticalSide = side * horizontalInward * verticalInward;
-            if (side === verticalInward) {
-              // The inner edges already intersect; stop both there to avoid doubled strokes.
-              innerCornerTrims.set(trimKey(horizontalIndex, x, side), x + verticalSide * PATH_HALF_WIDTH);
-              innerCornerTrims.set(trimKey(verticalIndex, y, verticalSide), y + side * PATH_HALF_WIDTH);
-            } else {
-              cornerJoins.push([
-                { x, y: y + side * PATH_HALF_WIDTH, z: 0 },
-                { x: x + verticalSide * PATH_HALF_WIDTH, y: y + side * PATH_HALF_WIDTH, z: 0 },
-                { x: x + verticalSide * PATH_HALF_WIDTH, y, z: 0 }
-              ]);
-            }
-          }
-        }
+  const xs = [...new Set(rectangles.flatMap(rect => [rect.left, rect.right]))].sort((a, b) => a - b);
+  const ys = [...new Set(rectangles.flatMap(rect => [rect.top, rect.bottom]))].sort((a, b) => a - b);
+  const occupied = Array.from({ length: ys.length - 1 }, () => new Uint8Array(xs.length - 1));
+  for (let row = 0; row < ys.length - 1; row++) {
+    const y = (ys[row] + ys[row + 1]) / 2;
+    for (let column = 0; column < xs.length - 1; column++) {
+      const x = (xs[column] + xs[column + 1]) / 2;
+      if (rectangles.some(rect => x > rect.left && x < rect.right && y > rect.top && y < rect.bottom)) {
+        occupied[row][column] = 1;
       }
     }
   }
 
-  for (let pathIndex = 0; pathIndex < paths.length; pathIndex++) {
-    const path = paths[pathIndex];
-    for (const offset of [-PATH_HALF_WIDTH, PATH_HALF_WIDTH]) {
-      const from = innerCornerTrims.get(trimKey(pathIndex, path.from, offset))
-        ?? trimJunctionEnd(path, path.from, path.to);
-      const to = innerCornerTrims.get(trimKey(pathIndex, path.to, offset))
-        ?? trimJunctionEnd(path, path.to, path.from);
-      const low = Math.min(from, to);
-      const high = Math.max(from, to);
-      const samples = [];
-      for (let value = low; value < high; value += 4) samples.push(value);
-      samples.push(high);
-      const points = samples.map(value => ({
-        x: path.axis === 'x' ? value : path.fixed + offset,
-        y: path.axis === 'x' ? path.fixed + offset : value,
-        z: 0
-      }));
-      lines.push(points);
+  const verticalEdges = new Map();
+  const horizontalEdges = new Map();
+  for (let row = 0; row < ys.length - 1; row++) {
+    for (let column = 0; column < xs.length - 1; column++) {
+      if (!occupied[row][column]) continue;
+      const left = xs[column];
+      const right = xs[column + 1];
+      const top = ys[row];
+      const bottom = ys[row + 1];
+      if (column === 0 || !occupied[row][column - 1]) addSegment(verticalEdges, left, top, bottom);
+      if (column === xs.length - 2 || !occupied[row][column + 1]) addSegment(verticalEdges, right, top, bottom);
+      if (row === 0 || !occupied[row - 1][column]) addSegment(horizontalEdges, top, left, right);
+      if (row === ys.length - 2 || !occupied[row + 1][column]) addSegment(horizontalEdges, bottom, left, right);
     }
   }
 
-  lines.push(...cornerJoins);
-  return lines;
+  return [...mergeEdges(verticalEdges, true), ...mergeEdges(horizontalEdges, false)];
 }
