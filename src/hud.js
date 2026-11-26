@@ -81,7 +81,6 @@ export function setupHud(canvas, controls) {
       const compassTransform = `translateX(${compass.clientWidth / 2 - (bearing + 360) * COMPASS_PX_PER_DEGREE}px)`;
       if (compassTape.style.transform !== compassTransform) compassTape.style.transform = compassTransform;
       const room = world.getRoomAt(player.x, player.y);
-      const actionHint = touchMode ? 'PICK UP / DROP buttons' : 'E pick up · 1–9/0 select · G drop';
       const ticketPrice = world.ticketSeller?.price ?? 250;
       const ownsTicket = player.inventory.some(object => object?.type === 'ticket');
       const ticketSellerPrompt = ownsTicket
@@ -95,8 +94,8 @@ export function setupHud(canvas, controls) {
         ? touchMode ? 'PICK UP to board the rocket' : 'E · BOARD THE ROCKET'
         : player.launching ? 'THE ROCKET IS LIFTING OFF…'
           : player.actionMessageTimer > 0
-        ? `${player.actionMessage} · ${actionHint}`
-        : touchMode ? 'Tap to walk · arrow buttons to turn · PICK UP / DROP' : 'Arrow keys turn · E pick up · 1–9/0 select · G drop';
+        ? player.actionMessage
+        : '';
       if (player.launching) document.body.classList.add('rocket-flight');
       boardingPrompt.classList.toggle('visible', (player.rocketNearby || player.ticketSellerNearby) && !player.launching);
       boardingKey.hidden = touchMode;
@@ -157,9 +156,7 @@ export function setupHud(canvas, controls) {
         setText(help, actionPrompt);
       } else {
         setText(buildingLabel, '—');
-        setText(help, player.actionMessageTimer > 0
-          ? actionPrompt
-          : `OUTSIDE · follow paths · ${actionHint}`);
+        setText(help, player.actionMessageTimer > 0 ? actionPrompt : 'OUTSIDE · follow paths');
       }
     }
   };
