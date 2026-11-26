@@ -100,7 +100,7 @@ export function makeTicketSeller(x, y, scale = 1, facing = 'south') {
   addLine([-.25, .11, .88], [-.3, .45, .42], [0, .52, .42], [.3, .45, .42], [.25, .11, .88]);
   addLine([-.39, .3, 1.07], [.39, .3, 1.07]);
   return {
-    type: 'ticketSeller', x, y, price: 200, held: false, lines,
+    type: 'ticketSeller', x, y, price: 250, held: false, lines,
     cuboids: [
       { x, y: y + localY(.56), w: 2.55 * scale, d: .72 * scale, z: .82 * scale, h: .14 * scale },
       { x, y: y + localY(.91), w: 2.35 * scale, d: .12 * scale, z: .08 * scale, h: .74 * scale },

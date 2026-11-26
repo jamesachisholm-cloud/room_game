@@ -82,7 +82,7 @@ export function setupHud(canvas, controls) {
       if (compassTape.style.transform !== compassTransform) compassTape.style.transform = compassTransform;
       const room = world.getRoomAt(player.x, player.y);
       const actionHint = touchMode ? 'PICK UP / DROP buttons' : 'E pick up · 1–9/0 select · G drop';
-      const ticketPrice = world.ticketSeller?.price ?? 200;
+      const ticketPrice = world.ticketSeller?.price ?? 250;
       const ownsTicket = player.inventory.some(object => object?.type === 'ticket');
       const ticketSellerPrompt = ownsTicket
         ? 'FLIGHT TICKET IN INVENTORY'
