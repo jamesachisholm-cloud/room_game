@@ -23,7 +23,6 @@ export function setupHud(canvas, controls) {
   const endingMessage = document.querySelector('#ending-message');
   const restartButton = document.querySelector('#restart');
   const startButton = document.querySelector('#start');
-  const buildingLabel = document.querySelector('#building');
   const creditsLabel = document.querySelector('#credits');
   const creditsIndicator = document.querySelector('#credits-card');
   const robberDistanceLabel = document.querySelector('#robber-distance');
@@ -152,10 +151,8 @@ export function setupHud(canvas, controls) {
         setText(item, object ? (OBJECT_METADATA[object.type]?.inventoryName ?? object.type) : '—');
       });
       if (room) {
-        setText(buildingLabel, room.building);
         setText(help, actionPrompt);
       } else {
-        setText(buildingLabel, '—');
         setText(help, player.actionMessageTimer > 0 ? actionPrompt : 'OUTSIDE · follow paths');
       }
     }
