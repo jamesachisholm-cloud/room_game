@@ -5,7 +5,7 @@ import { SIZE } from './world-constants.js?v=20261117';
 import { randomizeObjectPlacements } from './object-placement.js?v=20261101';
 import { buildWorldMap } from './world-map.js?v=20261114';
 import { makeRocket } from './rocket.js?v=20261092';
-import { makeAirportFixtures } from './airport-fixtures.js';
+import { makeAirportFixtures, makeRocketAirport } from './airport-fixtures.js?v=20261126';
 
 export { CELL_FT, SIZE } from './world-constants.js?v=20261117';
 export { parsePlan } from './map-plan.js?v=20261108';
@@ -113,6 +113,7 @@ export async function createWorld() {
   }
   const start = { x: placed.A.x + 3.5, y: placed.A.y + 3.5, a: 0 };
   const rocket = makeRocket(placed.F.x + placed.F.w / 2, placed.F.y + placed.F.h + 18);
+  fixtures.push(...makeRocketAirport(rocket));
   const ticketSellerScale = 0.25;
   const ticketSeller = makeTicketSeller(
     placed.E.x + SIZE / 2,
