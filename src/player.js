@@ -1,7 +1,7 @@
 import { CELL_FT } from './world.js?v=20261117';
 import { OBJECT_METADATA } from './object-types.js?v=20261108';
 import { hasClearFootprint } from './placement.js?v=20261038';
-import { createRobber, stashTicket, stealInventoryObjects, updateRobber } from './robber.js?v=20261114';
+import { createRobber, stashTicket, stealInventoryObjects, updateRobber } from './robber.js?v=2026112601';
 
 let soundContext;
 let robberDrone;

@@ -88,11 +88,12 @@ function findPath(world, startX, startY, goalX, goalY) {
     for (const [dx, dy] of NEIGHBORS) {
       const nx = x + dx;
       const ny = y + dy;
-      if (nx < 0 || ny < 0 || nx >= width || ny >= height || map[ny][nx] === 1 || !world.canMove(x + .5, y + .5, nx + .5, ny + .5)) continue;
+      if (nx < 0 || ny < 0 || nx >= width || ny >= height || map[ny][nx] === 1) continue;
       const next = ny * width + nx;
       if (closed[next] === generation) continue;
       const score = scores[current] + 1;
       if (seen[next] === generation && score >= scores[next]) continue;
+      if (!world.canMove(x + .5, y + .5, nx + .5, ny + .5)) continue;
       scores[next] = score;
       seen[next] = generation;
       parents[next] = current;
@@ -219,8 +220,17 @@ export function updateRobber(robber, world, player, dt, onCatch) {
   robber.catchCooldown = Math.max(0, (robber.catchCooldown ?? 0) - dt);
   robber.replanIn -= dt;
   if (robber.replanIn <= 0) {
-    robber.path = findPath(world, robber.x, robber.y, player.x, player.y);
-    robber.pathIndex = 0;
+    const goalX = Math.floor(player.x);
+    const goalY = Math.floor(player.y);
+    // Keep following a valid route to the same tile, but retry if movement has stalled.
+    if (goalX !== robber.goalX || goalY !== robber.goalY
+      || robber.pathIndex <= robber.lastReplanIndex || robber.pathIndex >= robber.path.length) {
+      robber.path = findPath(world, robber.x, robber.y, player.x, player.y);
+      robber.pathIndex = 0;
+      robber.goalX = goalX;
+      robber.goalY = goalY;
+    }
+    robber.lastReplanIndex = robber.pathIndex;
     robber.replanIn = REPLAN_SECONDS;
   }
   const target = robber.path[robber.pathIndex];
