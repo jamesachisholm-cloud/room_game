@@ -1,7 +1,7 @@
 window.__roomLinesModuleLoaded = true;
 
 import { createWorld } from './world.js?v=20261126';
-import { createPlayer, attachPlayerControls } from './player.js?v=20261119';
+import { createPlayer, attachPlayerControls } from './player.js?v=2026112601';
 import { createRenderer } from './renderer.js?v=2026112603';
 import { setupHud } from './hud.js?v=2026112604';
 import { setupTouchControls } from './touch.js?v=20261072';
@@ -18,7 +18,7 @@ async function startGame() {
 
   function frame(timestamp) {
     try {
-      const dt = Math.min(.05, (timestamp - previousFrame) / 1000 || 0);
+      const dt = Math.min(.1, (timestamp - previousFrame) / 1000 || 0);
       previousFrame = timestamp;
       controls.update(dt, world);
       hud.update(world, player);
