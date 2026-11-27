@@ -1,14 +1,15 @@
 import { drawDoorGlyph } from './door-renderer.js?v=2026112602';
+import { createObjectRenderer } from './object-renderer.js?v=2026112701';
 import { buildPathLines } from './path-geometry.js?v=2026112603';
 import { createLaunchRenderer } from './launch-renderer.js?v=20261116';
 import { createProjector } from './projected-lines.js?v=20261116';
+import { createSkyRenderer } from './sky-renderer.js?v=2026112701';
 import { WALL_HEIGHT } from './world-constants.js?v=20261117';
 
 // Phones render at a lower resolution and sample fewer rays and line points.
 const COARSE_POINTER = matchMedia('(pointer: coarse)').matches;
 // Largest canvas backing store, about 1600x875. Bigger windows are scaled up from this.
 const MAX_BACKING_PIXELS = 1.4e6;
-const OBJECT_RANGE = 50;
 const STROKE_LEVELS = 32;
 const DOOR_HEIGHT = 1;
 const DOOR_WIDTH = .8;
@@ -16,55 +17,10 @@ const EYE_HEIGHT = .5;
 const FOV = Math.PI / 3;
 const BUILDING_HUES = { A: 190, B: 316, C: 345, D: 246, E: 28, F: 302 };
 const PROFILE_RENDERER = new URLSearchParams(location.search).get('perf') === '1';
-// Map north is -y, so angles are measured from +x (east) towards +y (south).
-// Craters are [x, y, radius] in units of the moon's radius.
-const MOONS = [
-  { angle: -Math.PI / 2, color: '#dfeaff', radius: .07, height: .62, craters: [[-.35, -.3, .22], [.3, .15, .16], [-.1, .5, .12], [.5, -.45, .1], [-.55, .25, .09]] },
-  { angle: 0, color: '#ffe9bd', radius: .055, height: .5, craters: [[.25, -.35, .2], [-.4, .1, .18], [.1, .45, .13], [-.15, -.55, .09]] },
-  { angle: Math.PI / 2, color: '#ffd3df', radius: .085, height: .68, craters: [[-.2, -.4, .25], [.4, .25, .2], [-.45, .35, .12], [.15, .6, .1], [.55, -.35, .09], [0, 0, .07]] },
-  { angle: Math.PI, color: '#d4ffe6', radius: .045, height: .45, craters: [[.3, .2, .24], [-.35, -.25, .17], [-.05, .55, .11]] }
-];
-
-// Each cloud is a cluster of soft, flattened puffs at a fixed bearing and sky height.
-const CLOUDS = [[-2.9, .78, .9], [-2.1, .42, .7], [-1.2, .66, .8], [-.4, .3, .6], [.5, .72, .9], [1.3, .38, .7], [2.2, .6, .8]].map(([angle, height, span], seed) => ({
-  angle, height, span,
-  puffs: Array.from({ length: 8 }, (_, k) => ({
-    dx: k / 7 - .5 + Math.sin(seed * 3 + k * 2.1) * .05,
-    dy: Math.sin(seed * 5 + k * 1.7) * .012,
-    radius: .16 + .1 * Math.abs(Math.sin(seed * 2 + k * 1.3)),
-    alpha: .04 + .03 * Math.abs(Math.cos(seed * 4 + k * 2.2))
-  }))
-}));
-
-// Stars are fixed bearings and sky heights, generated from a seeded sequence so they never move.
-const STARS = (() => {
-  let seed = 20261044;
-  const random = () => {
-    seed = (seed + 0x6D2B79F5) | 0;
-    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-  return Array.from({ length: 420 }, () => {
-    const roll = random();
-    // About one star in eight is bright, and another few are mid-brightness.
-    const bright = roll < .12;
-    const angle = random() * Math.PI * 2 - Math.PI;
-    return {
-      angle,
-      cos: Math.cos(angle),
-      sin: Math.sin(angle),
-      height: .02 + random() * .96,
-      size: bright ? 2 : 1,
-      bright,
-      alpha: bright ? .8 + random() * .2 : roll < .35 ? .55 + random() * .3 : .22 + random() * .3,
-      phase: random() * Math.PI * 2
-    };
-  });
-})();
-
 export function createRenderer(canvas, world) {
   const context = canvas.getContext('2d');
+  const skyRenderer = createSkyRenderer(context);
+  const drawSceneObjects = createObjectRenderer(context, world);
   const magicDoorById = new Map(world.magicDoors.map(door => [door.id, door]));
   const doorAlongBounds = new Map();
   for (const [cell, doorId] of world.doors) {
@@ -83,11 +39,7 @@ export function createRenderer(canvas, world) {
   let rayCount = 600;
   let horizon = 0;
   let focal = 1;
-  let skyGradient = null;
-  let groundGradient = null;
   let buildingFinishes = [];
-  let moonSprites = [];
-  let cloudSprites = [];
   // Quality lowers the ray count on slow devices and raises it again when frames are fast.
   let quality = 1;
   let pixelRatioCap = 1.25;
@@ -219,12 +171,7 @@ export function createRenderer(canvas, world) {
     canvas.width = Math.floor(width * pixelRatio);
     canvas.height = Math.floor(height * pixelRatio);
     context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
-    skyGradient = context.createLinearGradient(0, 0, 0, horizon);
-    skyGradient.addColorStop(0, '#0d1c1a');
-    skyGradient.addColorStop(1, '#1c3835');
-    groundGradient = context.createLinearGradient(0, horizon, 0, height);
-    groundGradient.addColorStop(0, '#030908');
-    groundGradient.addColorStop(1, '#1b302d');
+    skyRenderer.resize({ width, height, pixelRatio, focal, horizon });
     buildingFinishes = roofedAreas.map((area, index) => {
       const hue = buildingHues[index + 1] ?? 168;
       const ceiling = context.createLinearGradient(0, 0, 0, horizon);
@@ -237,35 +184,6 @@ export function createRenderer(canvas, world) {
       floor.addColorStop(1, `hsl(${hue},${saturation}%,${20 + lightnessOffset}%)`);
       return { ceiling, floor };
     });
-    moonSprites = [];
-    cloudSprites = [];
-  }
-  // Clouds are soft, so their sprites are drawn at half resolution to save memory.
-  function renderCloudSprite(cloud) {
-    const spread = focal * cloud.span;
-    const sizeX = Math.ceil(spread * 1.7);
-    const sizeY = Math.ceil(spread * .4 + height * .04);
-    const sprite = document.createElement('canvas');
-    sprite.width = Math.ceil(sizeX * .5);
-    sprite.height = Math.ceil(sizeY * .5);
-    const spriteContext = sprite.getContext('2d');
-    spriteContext.scale(.5, .5);
-    for (const puff of cloud.puffs) {
-      const puffRadius = spread * puff.radius;
-      spriteContext.save();
-      spriteContext.translate(sizeX / 2 + spread * puff.dx, sizeY / 2 + puff.dy * height);
-      spriteContext.scale(1, .3);
-      const body = spriteContext.createRadialGradient(0, 0, 0, 0, 0, puffRadius);
-      body.addColorStop(0, `rgba(205,230,235,${puff.alpha})`);
-      body.addColorStop(.25, `rgba(205,230,235,${puff.alpha * .8})`);
-      body.addColorStop(.5, `rgba(205,230,235,${puff.alpha * .45})`);
-      body.addColorStop(.75, `rgba(205,230,235,${puff.alpha * .15})`);
-      body.addColorStop(1, 'rgba(205,230,235,0)');
-      spriteContext.fillStyle = body;
-      spriteContext.fillRect(-puffRadius, -puffRadius, puffRadius * 2, puffRadius * 2);
-      spriteContext.restore();
-    }
-    return { canvas: sprite, width: sizeX, height: sizeY };
   }
   addEventListener('resize', resize);
   resize();
@@ -297,98 +215,7 @@ export function createRenderer(canvas, world) {
       : world.getRoomAt(player.x, player.y)?.building;
     const cosA = Math.cos(player.a);
     const sinA = Math.sin(player.a);
-    context.fillStyle = skyGradient;
-    context.fillRect(0, 0, width, horizon);
-    {
-      const seconds = frameStart / 1000;
-      const starLimit = Math.tan(FOV / 2 + .05);
-      context.fillStyle = '#e8f4ff';
-      for (const star of STARS) {
-        const depth = star.cos * cosA + star.sin * sinA;
-        const lateral = star.sin * cosA - star.cos * sinA;
-        if (depth <= 0 || Math.abs(lateral) > depth * starLimit) continue;
-        const starX = width / 2 + focal * lateral / depth;
-        const starY = horizon * (1 - star.height);
-        const twinkle = .8 + .2 * Math.sin(seconds * 1.5 + star.phase);
-        if (star.bright) {
-          context.globalAlpha = star.alpha * twinkle * .18;
-          context.fillRect(starX - 1.5, starY - 1.5, star.size + 3, star.size + 3);
-        }
-        context.globalAlpha = star.alpha * twinkle;
-        context.fillRect(starX, starY, star.size, star.size);
-      }
-      context.globalAlpha = 1;
-    }
-    MOONS.forEach((moon, index) => {
-      const offset = Math.atan2(Math.sin(moon.angle - player.a), Math.cos(moon.angle - player.a));
-      if (Math.abs(offset) > FOV / 2 + .3) return;
-      const sprite = moonSprites[index] ?? (moonSprites[index] = renderMoonSprite(moon));
-      context.drawImage(sprite.canvas, width / 2 + focal * Math.tan(offset) - sprite.size / 2, horizon * (1 - moon.height) - sprite.size / 2, sprite.size, sprite.size);
-    });
-
-    // Each moon is drawn once into a sprite, because its gradients are costly to rebuild every frame.
-    function renderMoonSprite(moon) {
-      const moonRadius = height * moon.radius;
-      const size = Math.ceil(moonRadius * 6.8);
-      const sprite = document.createElement('canvas');
-      sprite.width = Math.ceil(size * pixelRatio);
-      sprite.height = sprite.width;
-      const context = sprite.getContext('2d');
-      context.scale(pixelRatio, pixelRatio);
-      const moonX = size / 2;
-      const moonY = size / 2;
-      context.globalAlpha = .78;
-      const glow = context.createRadialGradient(moonX, moonY, moonRadius * .6, moonX, moonY, moonRadius * 3.2);
-      glow.addColorStop(0, `${moon.color}44`);
-      glow.addColorStop(.3, `${moon.color}22`);
-      glow.addColorStop(.6, `${moon.color}0a`);
-      glow.addColorStop(1, `${moon.color}00`);
-      context.fillStyle = glow;
-      context.fillRect(moonX - moonRadius * 3.2, moonY - moonRadius * 3.2, moonRadius * 6.4, moonRadius * 6.4);
-      // The disc fades out over its outer edge so it melts into the sky.
-      const disc = context.createRadialGradient(moonX, moonY, moonRadius * .55, moonX, moonY, moonRadius * 1.14);
-      disc.addColorStop(0, moon.color);
-      disc.addColorStop(.6, `${moon.color}cc`);
-      disc.addColorStop(1, `${moon.color}00`);
-      context.fillStyle = disc;
-      context.beginPath();
-      context.arc(moonX, moonY, moonRadius * 1.14, 0, Math.PI * 2);
-      context.fill();
-      context.save();
-      context.beginPath();
-      context.arc(moonX, moonY, moonRadius * .9, 0, Math.PI * 2);
-      context.clip();
-      for (const [cx, cy, cr] of moon.craters) {
-        context.fillStyle = 'rgba(40,50,80,.09)';
-        context.beginPath();
-        context.arc(moonX + cx * moonRadius, moonY + cy * moonRadius, cr * moonRadius, 0, Math.PI * 2);
-        context.fill();
-        // Lit rim on the upper-left edge of each crater.
-        context.strokeStyle = 'rgba(255,255,255,.07)';
-        context.lineWidth = Math.max(.6, moonRadius * .02);
-        context.beginPath();
-        context.arc(moonX + cx * moonRadius, moonY + cy * moonRadius, cr * moonRadius, Math.PI * .75, Math.PI * 1.75);
-        context.stroke();
-      }
-      const shade = context.createRadialGradient(moonX - moonRadius * .3, moonY - moonRadius * .3, moonRadius * .3, moonX, moonY, moonRadius * .9);
-      shade.addColorStop(0, 'rgba(0,0,0,0)');
-      shade.addColorStop(1, 'rgba(10,20,40,.12)');
-      context.fillStyle = shade;
-      context.fillRect(moonX - moonRadius, moonY - moonRadius, moonRadius * 2, moonRadius * 2);
-      context.restore();
-      return { canvas: sprite, size };
-    }
-    {
-      const drift = frameStart * 8e-6;
-      CLOUDS.forEach((cloud, index) => {
-        const offset = Math.atan2(Math.sin(cloud.angle + drift - player.a), Math.cos(cloud.angle + drift - player.a));
-        if (Math.abs(offset) > FOV / 2 + cloud.span / 2) return;
-        const sprite = cloudSprites[index] ?? (cloudSprites[index] = renderCloudSprite(cloud));
-        context.drawImage(sprite.canvas, width / 2 + focal * Math.tan(offset) - sprite.width / 2, horizon * (1 - cloud.height) - sprite.height / 2, sprite.width, sprite.height);
-      });
-    }
-    context.fillStyle = groundGradient;
-    context.fillRect(0, horizon, width, height - horizon);
+    skyRenderer.draw(player, frameStart, horizon);
     if (framePhases) {
       phaseStartedAt = performance.now();
       framePhases.skyMs = phaseStartedAt - frameStart;
@@ -402,17 +229,6 @@ export function createRenderer(canvas, world) {
     let hitCount = 0;
     const now = frameStart;
     const maxRaySteps = Math.min(mapWidth + mapHeight, COARSE_POINTER ? 250 : 400);
-    const objectStyle = object => {
-      const remaining = (object.flashUntil ?? 0) - now;
-      if (remaining > 0) {
-        const progress = Math.max(0, Math.min(1, 1 - remaining / 1100));
-        const glow = Math.sin(progress * Math.PI);
-        return { color: `rgba(221,255,245,${.35 + glow * .65})`, width: 1.5 + glow * 1.5 };
-      }
-      return object.paired
-        ? { color: 'rgba(147,235,255,.9)', width: 2 }
-        : { color: 'rgba(114,255,208,.72)', width: 1.5 };
-    };
     visibleDoors.clear();
     for (let sx = 0; sx < width; sx += step) {
       const screenOffset = (sx - width / 2) / focal;
@@ -649,123 +465,7 @@ export function createRenderer(canvas, world) {
       for (const points of outlineLines) addProjectedPolyline(points, false, points.length === 2 ? 4 : 1);
       context.stroke();
     }
-    const objectLineStyle = { color: 'rgba(114,255,208,.72)', width: 1.5 };
-    // Objects beyond this range are too small to see and are skipped.
-    const isNear = object => (object.x - player.x) ** 2 + (object.y - player.y) ** 2 < OBJECT_RANGE ** 2;
-    function drawCuboid(box, ignoreWalls = false, lineStyle = objectLineStyle) {
-      const baseZ = box.z ?? 0;
-      const corners = [];
-      for (const z of [baseZ, baseZ + box.h]) {
-        for (const sy of [-1, 1]) {
-          for (const sx of [-1, 1]) corners.push({ x: box.x + sx * box.w / 2, y: box.y + sy * box.d / 2, z });
-        }
-      }
-      const edges = [[0,1],[0,2],[1,3],[2,3],[4,5],[4,6],[5,7],[6,7],[0,4],[1,5],[2,6],[3,7]];
-      context.strokeStyle = lineStyle.color;
-      context.lineWidth = lineStyle.width;
-      context.beginPath();
-      for (const [a, b] of edges) addProjectedPolyline([corners[a], corners[b]], ignoreWalls, 10);
-      context.stroke();
-    }
-    function drawWireObject(cat, ignoreWalls = false, lineStyle = objectLineStyle) {
-      for (const part of cat.cuboids ?? []) drawCuboid(part, ignoreWalls, lineStyle);
-      context.strokeStyle = lineStyle.color;
-      context.lineWidth = lineStyle.width;
-      context.beginPath();
-      for (const line of cat.lines) addProjectedPolyline(line, ignoreWalls, 10);
-      context.stroke();
-    }
-    for (const box of world.boxes) if (!box.held && isNear(box)) drawCuboid(box, false, objectStyle(box));
-    for (const table of world.tables) if (!table.held && isNear(table)) for (const part of table.parts) drawCuboid(part, false, objectStyle(table));
-    if (world.cat && !world.cat.held && isNear(world.cat)) drawWireObject(world.cat, false, objectStyle(world.cat));
-    for (const guitar of world.guitars) if (!guitar.held && isNear(guitar)) drawWireObject(guitar, false, objectStyle(guitar));
-    for (const object of world.wireObjects) if (!object.held && isNear(object)) drawWireObject(object, false, objectStyle(object));
-    for (const fixture of world.fixtures ?? []) {
-      if (!isNear(fixture)) continue;
-      const fixtureStyle = fixture.color ? { color: fixture.color, width: 1.5 } : objectLineStyle;
-      drawWireObject(fixture, false, fixtureStyle);
-    }
-    if (world.ticketSeller && isNear(world.ticketSeller)) drawWireObject(world.ticketSeller, false, objectLineStyle);
-    if (world.rocket && isNear(world.rocket)) {
-      const launchSeconds = player.launching?.elapsed ?? 0;
-      const lift = launchView ? Math.max(0, cameraHeight - EYE_HEIGHT) : player.launching ? Math.min(18, launchSeconds * launchSeconds * 2.4) : 0;
-      const rocketStyle = player.launching
-        ? { color: 'rgba(255,211,126,.95)', width: 1.8 }
-        : { color: 'rgba(255,201,124,.9)', width: 1.7 };
-      context.strokeStyle = rocketStyle.color;
-      context.lineWidth = rocketStyle.width;
-      context.beginPath();
-      for (const line of world.rocket.lines) {
-        addProjectedPolyline(line.map(point => ({ x: point.x, y: point.y, z: point.z + lift })), false, 8);
-      }
-      context.stroke();
-      context.strokeStyle = 'rgba(255,227,159,.98)';
-      context.lineWidth = 2.2;
-      context.beginPath();
-      for (const line of world.rocket.signLines) addProjectedPolyline(line, false, 8);
-      context.stroke();
-      if (player.launching && launchSeconds < 1.45) {
-        context.save();
-        context.globalAlpha = Math.max(.15, 1 - launchSeconds * .4);
-        context.strokeStyle = '#ff9e52';
-        context.lineWidth = 2;
-        context.beginPath();
-        for (const side of [-1, 0, 1]) {
-          addProjectedPolyline([
-            { x: world.rocket.x - 4.25, y: world.rocket.y + side * .12, z: lift + .35 },
-            { x: world.rocket.x - 4.8, y: world.rocket.y + side * (.35 + launchSeconds * .2), z: Math.max(.05, lift - .9 - Math.abs(side) * .2) }
-          ], true, 6);
-        }
-        context.stroke();
-        context.restore();
-      }
-    }
-    for (const picture of world.pictures) {
-      if (!isNear(picture)) continue;
-      const frontSide = picture.side === 'north' ? player.y > picture.y
-        : picture.side === 'south' ? player.y < picture.y
-        : picture.side === 'west' ? player.x > picture.x
-        : player.x < picture.x;
-      if (!frontSide) continue;
-      const lineStyle = objectStyle(picture);
-      context.strokeStyle = lineStyle.color;
-      context.lineWidth = lineStyle.width;
-      context.beginPath();
-      for (const line of picture.lines) addProjectedPolyline(line, false, 10);
-      context.stroke();
-    }
-
-    const robber = world.robber;
-    if (robber) {
-      const towardX = player.x - robber.x;
-      const towardY = player.y - robber.y;
-      const distance = Math.hypot(towardX, towardY) || 1;
-      const sideX = -towardY / distance;
-      const sideY = towardX / distance;
-      const ghostLines = [
-        [[-.18, 1.82], [-.12, 1.96], [0, 2.02], [.12, 1.96], [.18, 1.82], [.16, 1.68], [0, 1.62], [-.16, 1.68], [-.18, 1.82]],
-        [[-.1, 1.65], [-.21, 1.52], [-.24, 1.2], [-.34, .83], [-.23, .67], [-.12, .84], [0, .72], [.12, .84], [.23, .67], [.34, .83], [.24, 1.2], [.21, 1.52], [.1, 1.65]],
-        [[-.2, 1.48], [-.39, 1.26], [-.42, 1.04]],
-        [[.2, 1.48], [.39, 1.26], [.42, 1.04]],
-        [[-.12, .84], [-.18, .55], [-.27, .28], [-.38, .12]],
-        [[.12, .84], [.18, .55], [.27, .28], [.38, .12]],
-        [[-.08, 1.82], [-.025, 1.82]],
-        [[.025, 1.82], [.08, 1.82]]
-      ];
-      const ghostPoint = ([horizontal, z]) => ({
-        x: robber.x + sideX * horizontal,
-        y: robber.y + sideY * horizontal,
-        z
-      });
-      context.save();
-      context.globalAlpha = .62 + Math.sin(now * .003) * .08;
-      context.strokeStyle = 'rgba(170,220,255,.75)';
-      context.lineWidth = 1.7;
-      context.beginPath();
-      for (const line of ghostLines) addProjectedPolyline(line.map(ghostPoint), false, 5);
-      context.stroke();
-      context.restore();
-    }
+    drawSceneObjects({ player, now, launchView, cameraHeight, eyeHeight: EYE_HEIGHT, addProjectedPolyline });
 
     for (const door of visibleDoors.values()) {
       const leftBottom = horizon + focal * cameraHeight / door.leftDepth;
