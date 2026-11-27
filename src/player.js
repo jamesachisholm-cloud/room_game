@@ -124,6 +124,8 @@ export function attachPlayerControls(player, canvas, world) {
   const movementKeys = ['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'];
   const touchMove = { x: 0, y: 0 };
   let touchTurn = 0;
+  let keyTurnHeld = 0;
+  let keyTurnDirection = 0;
   let walkTarget = null;
   const VIEW_FOV = Math.PI / 3; // must match renderer FOV
   const TAP_WALK_CELLS_PER_WIDTH = 16;
@@ -390,7 +392,11 @@ export function attachPlayerControls(player, canvas, world) {
       player.rocketNearby = Boolean(world.rocket && Math.hypot(player.x - world.rocket.entranceX, player.y - world.rocket.entranceY) < ROCKET_INTERACTION_RANGE);
       player.ticketSellerNearby = Boolean(world.ticketSeller && Math.hypot(player.x - world.ticketSeller.x, player.y - world.ticketSeller.y) < 2.2);
       const turn = (keysDown.has('arrowright') ? 1 : 0) - (keysDown.has('arrowleft') ? 1 : 0);
-      player.a += (turn + touchTurn) * dt * 2.1;
+      // Key turning eases in so a quick tap nudges the view while a held key turns at full speed.
+      keyTurnHeld = turn && turn === keyTurnDirection ? keyTurnHeld + dt : 0;
+      keyTurnDirection = turn;
+      const turnEase = .3 + .7 * Math.min(1, keyTurnHeld / .5);
+      player.a += (turn * turnEase + touchTurn) * dt * 2.1;
       let forward = (keysDown.has('w') || keysDown.has('arrowup') ? 1 : 0) - (keysDown.has('s') || keysDown.has('arrowdown') ? 1 : 0) + touchMove.y;
       let side = (keysDown.has('d') ? 1 : 0) - (keysDown.has('a') ? 1 : 0) + touchMove.x;
       const magnitude = Math.max(1, Math.hypot(forward, side));

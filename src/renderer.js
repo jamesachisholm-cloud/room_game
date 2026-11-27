@@ -6,6 +6,8 @@ import { WALL_HEIGHT } from './world-constants.js?v=20261117';
 
 // Phones render at a lower resolution and sample fewer rays and line points.
 const COARSE_POINTER = matchMedia('(pointer: coarse)').matches;
+// Largest canvas backing store, about 1600x875. Bigger windows are scaled up from this.
+const MAX_BACKING_PIXELS = 1.4e6;
 const OBJECT_RANGE = 50;
 const STROKE_LEVELS = 32;
 const DOOR_HEIGHT = 1;
@@ -205,9 +207,12 @@ export function createRenderer(canvas, world) {
     // Keep the backing canvas modest on high-DPI displays. Lower tiers reduce
     // pixel work as well as ray and line work on slower machines.
     pixelRatioCap = quality < .55 ? .9 : quality < .75 ? 1 : 1.25;
-    pixelRatio = Math.min(devicePixelRatio || 1, pixelRatioCap);
     width = innerWidth;
     height = innerHeight;
+    // The canvas is stretched to the window by CSS, so large windows can render at a lower
+    // pixel ratio to keep the pixel count (and fill cost) bounded.
+    const budgetRatio = Math.sqrt(MAX_BACKING_PIXELS / (width * height));
+    pixelRatio = Math.min(devicePixelRatio || 1, pixelRatioCap, budgetRatio);
     horizon = height * .5;
     focal = width / (2 * Math.tan(FOV / 2));
     rayCount = Math.min(COARSE_POINTER ? 480 : 720, Math.max(360, Math.floor(width * .72)));
