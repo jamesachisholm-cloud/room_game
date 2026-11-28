@@ -40,6 +40,39 @@ export function makeAirportFixtures(building) {
     f.add([-.18, -.1, .53], [-.12, -.1, .53]);
     fixtures.push(f);
   }
+  // Three passenger coaches parked along the north frontage, clear of the entrance at the west end.
+  for (const xOffset of [11.5, 14.5, 17.5]) {
+    const coach = fixture(building.x + xOffset, building.y - 2.8, '#8fcfc8');
+    // Rotate the coach's front (its local +X end) toward the north, away from the building.
+    const addCoach = (...points) => coach.add(...points.map(([x, y, z]) => [-y * .595, -x * .493, z * .527]));
+    // Long passenger body with a lower chassis and clipped front cab.
+    addCoach([-2.85, -.72, .58], [2.15, -.72, .58], [2.85, -.48, .58], [2.85, .48, .58], [2.15, .72, .58], [-2.85, .72, .58], [-2.85, -.72, .58]);
+    addCoach([-2.85, -.72, .58], [-2.85, -.72, 1.9], [2.15, -.72, 1.9], [2.85, -.48, 1.62], [2.85, .48, 1.62], [2.15, .72, 1.9], [-2.85, .72, 1.9], [-2.85, -.72, .58]);
+    addCoach([-2.85, .72, .58], [-2.85, .72, 1.9]);
+    addCoach([2.15, -.72, 1.9], [2.15, .72, 1.9]);
+    // Passenger windows on both sides, with a broad front windscreen.
+    for (const side of [-1, 1]) {
+      for (const x of [-2.35, -1.55, -.75, .05, .85, 1.55]) {
+        addCoach([x, side * .735, 1.18], [x + .58, side * .735, 1.18], [x + .58, side * .735, 1.72], [x, side * .735, 1.72], [x, side * .735, 1.18]);
+      }
+    }
+    addCoach([2.19, -.48, 1.12], [2.19, .48, 1.12], [2.72, .4, 1.36], [2.72, -.4, 1.36], [2.19, -.48, 1.12]);
+    // Three axles per side.
+    for (const x of [-1.95, .75, 2.15]) {
+      for (const side of [-1, 1]) {
+        const wheel = Array.from({ length: 9 }, (_, i) => {
+          const angle = i * Math.PI * 2 / 8;
+          return [x + Math.cos(angle) * .31, side * .74, .35 + Math.sin(angle) * .31];
+        });
+        addCoach(...wheel);
+      }
+    }
+    // Mirrors and destination sign make the coach read clearly from a distance.
+    addCoach([2.45, -.48, 1.25], [2.7, -.68, 1.42], [2.7, -.68, 1.58]);
+    addCoach([2.45, .48, 1.25], [2.7, .68, 1.42], [2.7, .68, 1.58]);
+    addCoach([2.05, -.73, 1.73], [2.7, -.48, 1.73]);
+    fixtures.push(coach);
+  }
   return fixtures;
 }
 
@@ -130,6 +163,85 @@ export function makeRocketAirport(rocket) {
   }
   goggles.add([-.04, -.025, 1.49], [.04, -.025, 1.49]);
   fixtures.push(goggles);
+
+  // A dedicated short landing strip and a small moored airship on the east side.
+  const airshipX = rocket.x + 28;
+  const airshipY = rocket.y + 10;
+  const airshipStrip = fixture(airshipX, airshipY, '#b9d9e4');
+  airshipStrip.add([-4, -15, z], [-4, 15, z]);
+  airshipStrip.add([4, -15, z], [4, 15, z]);
+  for (const y of [-15, 15]) {
+    for (let x = -3.3; x <= 2.5; x += 1.1) airshipStrip.add([x, y, z], [x + .65, y, z]);
+  }
+  for (const y of [-11, -7, -3, 3, 7, 11]) airshipStrip.add([0, y, z], [0, y + 1.5, z]);
+  fixtures.push(airshipStrip);
+
+  // Elongated ring sections, tail fins and a suspended gondola make the zeppelin silhouette.
+  const zeppelin = fixture(airshipX, airshipY, '#a8d8d1');
+  const airshipRings = [
+    [-6, .08, 5.75], [-4.8, .52, 6.1], [-3, .92, 6.35],
+    [0, 1.12, 6.45], [3, .92, 6.35], [4.8, .52, 6.1], [6, .08, 5.75]
+  ];
+  for (const [y, radius, height] of airshipRings) {
+    const ring = Array.from({ length: 9 }, (_, i) => {
+      const angle = i * Math.PI * 2 / 8;
+      return [Math.cos(angle) * radius, y, height + Math.sin(angle) * radius * .62];
+    });
+    zeppelin.add(...ring);
+  }
+  for (let i = 0; i < airshipRings.length - 1; i++) {
+    const [y1, r1, h1] = airshipRings[i], [y2, r2, h2] = airshipRings[i + 1];
+    for (let j = 0; j < 8; j++) {
+      const angle = j * Math.PI / 4;
+      zeppelin.add(
+        [Math.cos(angle) * r1, y1, h1 + Math.sin(angle) * r1 * .62],
+        [Math.cos(angle) * r2, y2, h2 + Math.sin(angle) * r2 * .62]
+      );
+    }
+  }
+  // Gondola, fins and short mooring ropes.
+  zeppelin.add([-.55, -1.1, 5.25], [.55, -1.1, 5.25], [.55, 1.1, 5.25], [-.55, 1.1, 5.25], [-.55, -1.1, 5.25]);
+  zeppelin.add([-.55, -1.1, 5.25], [-.4, -1.1, 4.82], [.4, -1.1, 4.82], [.55, -1.1, 5.25]);
+  zeppelin.add([-.55, 1.1, 5.25], [-.4, 1.1, 4.82], [.4, 1.1, 4.82], [.55, 1.1, 5.25]);
+  zeppelin.add([-.12, 5.1, 5.9], [-.12, 6.25, 6.35], [-.12, 7, 5.9], [-.12, 6.25, 5.5], [-.12, 5.1, 5.9]);
+  zeppelin.add([.12, 5.1, 5.9], [.12, 6.25, 6.35], [.12, 7, 5.9], [.12, 6.25, 5.5], [.12, 5.1, 5.9]);
+  zeppelin.add([0, -4.8, 5.95], [0, -5.5, 5.45], [0, -4.8, 5.55]);
+  zeppelin.add([-.7, 0, 5.4], [-1.4, 0, .04]);
+  zeppelin.add([.7, 0, 5.4], [1.4, 0, .04]);
+  fixtures.push(zeppelin);
+
+  // Bright rescue truck with cab, hose reel, lights and six wheel outlines.
+  const fireTruck = fixture(rocket.x + 18.5, rocket.y + 10, '#ff806f');
+  fireTruck.add([-1.7, -.72, .34], [1.65, -.72, .34], [1.65, .72, .34], [-1.7, .72, .34], [-1.7, -.72, .34]);
+  fireTruck.add([-1.7, -.72, .34], [-1.7, -.72, 1.05], [-.35, -.72, 1.05], [-.35, -.72, .34]);
+  fireTruck.add([-1.7, .72, .34], [-1.7, .72, 1.05], [-.35, .72, 1.05], [-.35, .72, .34]);
+  fireTruck.add([-.35, -.72, .34], [-.35, -.72, 1.45], [.9, -.72, 1.45], [1.05, -.72, .34]);
+  fireTruck.add([-.35, .72, .34], [-.35, .72, 1.45], [.9, .72, 1.45], [1.05, .72, .34]);
+  fireTruck.add([-.35, -.72, 1.45], [-.35, .72, 1.45]);
+  fireTruck.add([.9, -.72, 1.45], [.9, .72, 1.45]);
+  fireTruck.add([1.65, -.62, .68], [1.95, -.62, .68], [1.95, .62, .68], [1.65, .62, .68]);
+  // Hose reel on the rear body and a roof ladder.
+  for (let side of [-1, 1]) {
+    const reel = Array.from({ length: 9 }, (_, i) => {
+      const a = i * Math.PI * 2 / 8;
+      return [.72 + Math.cos(a) * .38, side * .735, .88 + Math.sin(a) * .38];
+    });
+    fireTruck.add(...reel);
+  }
+  fireTruck.add([-.2, -.35, 1.5], [1.35, -.35, 1.5]);
+  fireTruck.add([-.2, -.2, 1.63], [1.35, -.2, 1.63]);
+  for (let x = -.05; x <= 1.2; x += .3) fireTruck.add([x, -.35, 1.5], [x, -.2, 1.63]);
+  fireTruck.add([-.95, -.74, 1.1], [-.55, -.74, 1.1], [-.55, -.74, 1.28], [-.95, -.74, 1.28], [-.95, -.74, 1.1]);
+  for (const x of [-1.15, .25, 1.35]) {
+    for (const side of [-1, 1]) {
+      const wheel = Array.from({ length: 9 }, (_, i) => {
+        const a = i * Math.PI * 2 / 8;
+        return [x + Math.cos(a) * .26, side * .73, .27 + Math.sin(a) * .26];
+      });
+      fireTruck.add(...wheel);
+    }
+  }
+  fixtures.push(fireTruck);
 
   // A tall pole and striped windsock mark the field's wind direction.
   const pole = fixture(rocket.x - 9, rocket.y - 3.5, '#b9d9e4');

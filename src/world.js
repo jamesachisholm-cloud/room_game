@@ -5,7 +5,7 @@ import { SIZE } from './world-constants.js?v=20261117';
 import { randomizeObjectPlacements } from './object-placement.js?v=20261101';
 import { buildWorldMap } from './world-map.js?v=20261114';
 import { makeRocket } from './rocket.js?v=20261092';
-import { makeAirportFixtures, makeRocketAirport } from './airport-fixtures.js?v=2026112705';
+import { makeAirportFixtures, makeRocketAirport } from './airport-fixtures.js?v=2026112804';
 
 export { CELL_FT, SIZE } from './world-constants.js?v=20261117';
 export { parsePlan } from './map-plan.js?v=20261108';
